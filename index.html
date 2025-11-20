@@ -44,13 +44,13 @@
             border: none;
             cursor: pointer;
             border-radius: 30px;
-            transition: transform 0.2s;
+            transition: transform 0.2s, background 0.2s;
             color: #333;
             font-weight: bold;
             margin: 10px;
         }
-        button:hover { transform: scale(1.1); }
-        #level-info { font-size: 1.5rem; font-weight: bold; }
+        button:hover { transform: scale(1.1); background: #f0f0f0; }
+        #level-info { font-size: 1.5rem; font-weight: bold; transition: color 0.5s; }
         #instruction { font-size: 1.1rem; color: #ddd; margin-top: 5px; }
         #task-counter { font-size: 1.2rem; color: #88ccff; display: none; }
         
@@ -64,6 +64,17 @@
             z-index: 200;
             transition: opacity 3s ease-in-out;
         }
+        
+        /* Flash Effect Overlay */
+        #flash-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: white;
+            opacity: 0;
+            pointer-events: none;
+            z-index: 150;
+            transition: opacity 0.5s;
+        }
 
         #controls-hint {
             position: absolute;
@@ -76,11 +87,10 @@
             width: 100%;
         }
 
-        /* Botão específico para sensores (iOS/Mobile) */
         #gyro-btn {
             background: #4488ff;
             color: white;
-            display: none; /* Só aparece se detetar suporte */
+            display: none;
         }
     </style>
     <!-- Import Three.js -->
@@ -90,8 +100,8 @@
 
     <div id="ui-layer">
         <div>
-            <div id="level-info">Ilha 1: O Bebé</div>
-            <div id="instruction">Empurra as formas para os encaixes.</div>
+            <div id="level-info">Prólogo</div>
+            <div id="instruction">Prepara-te para a jornada.</div>
             <div id="task-counter">Dias: 0</div>
         </div>
         <div id="controls-hint">Setas, WASD ou Inclinar Telemóvel</div>
@@ -100,21 +110,104 @@
     <div id="title-card">
         <h1>A Jornada da Esfera</h1>
         <h2 id="phase-title">Prólogo</h2>
-        <p id="phase-desc">Uma representação jogável do sentido da vida.</p>
-        
-        <!-- Botão principal -->
-        <button id="start-btn">Começar Jornada</button>
-        
-        <!-- Botão extra para permissões no telemóvel -->
-        <button id="gyro-btn">Ativar Sensores de Movimento</button>
+        <p id="phase-desc">Uma representação jogável do sentido da vida.<br>Agora num mundo contínuo e conectado.</p>
+        <!-- Botões com efeitos sonoros -->
+        <button id="start-btn" onmouseenter="playHoverSound()">Começar Jornada</button>
+        <button id="gyro-btn" onmouseenter="playHoverSound()">Ativar Sensores de Movimento</button>
     </div>
 
     <div id="fade-overlay"></div>
+    <div id="flash-overlay"></div>
 
     <script>
+        // --- SISTEMA DE ÁUDIO (Web Audio API) ---
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        let audioCtx;
+        let musicInterval;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new AudioContext();
+                startAmbientMusic();
+            } else if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        }
+
+        // Sintetizador Simples
+        function playTone(freq, type, duration, vol = 0.1) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            
+            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        // Sons Específicos
+        function playHoverSound() {
+            if(!audioCtx) return; // Só toca se já tiver interagido uma vez ou iniciado
+            playTone(400, 'sine', 0.1, 0.05);
+        }
+
+        function playClickSound() {
+            initAudio();
+            playTone(600, 'square', 0.2, 0.1);
+            playTone(800, 'sine', 0.3, 0.1);
+        }
+
+        function playWinSound() {
+            playTone(440, 'sine', 0.5, 0.1);
+            setTimeout(() => playTone(554, 'sine', 0.5, 0.1), 100);
+            setTimeout(() => playTone(659, 'sine', 1.0, 0.1), 200);
+        }
+
+        function playMudSound() {
+            // Som grave e curto para simular lama
+            playTone(100 + Math.random()*50, 'sawtooth', 0.1, 0.05);
+        }
+
+        function playClinkSound() {
+            playTone(1200, 'sine', 0.1, 0.05);
+        }
+
+        // Música Ambiente Procedural
+        function startAmbientMusic() {
+            const notes = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25]; // Escala C Major
+            let noteIdx = 0;
+            
+            if (musicInterval) clearInterval(musicInterval);
+
+            musicInterval = setInterval(() => {
+                // Tocar uma nota aleatória da escala com muito reverb (simulado com release longo)
+                const freq = notes[Math.floor(Math.random() * notes.length)];
+                // Oitava abaixo para fundo
+                playTone(freq / 2, 'sine', 4, 0.02);
+                
+                // Ocasionalmente uma nota aguda
+                if(Math.random() > 0.7) {
+                    setTimeout(() => playTone(freq * 2, 'triangle', 2, 0.01), 500);
+                }
+            }, 3000); // A cada 3 segundos
+        }
+
+
+        // --- CONFIGURAÇÃO GERAL ---
+        const ISLAND_SPACING = 60; 
+
         // --- CONFIGURAÇÃO DO MOTOR (THREE.JS) ---
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87CEEB); // Céu azul
+        scene.background = new THREE.Color(0x87CEEB);
+        scene.fog = new THREE.Fog(0x87CEEB, 20, 80); 
 
         const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -128,56 +221,52 @@
         const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
         dirLight.position.set(10, 20, 10);
         dirLight.castShadow = true;
-        dirLight.shadow.camera.top = 20;
-        dirLight.shadow.camera.bottom = -20;
-        dirLight.shadow.camera.left = -20;
-        dirLight.shadow.camera.right = 20;
+        dirLight.shadow.camera.top = 50;
+        dirLight.shadow.camera.bottom = -50;
+        dirLight.shadow.camera.left = -50;
+        dirLight.shadow.camera.right = 50;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
         scene.add(dirLight);
 
         // --- ESTADO DO JOGO ---
         const gameState = {
-            level: 0,
+            currentLevelIndex: 0,
             started: false,
             completed: false,
-            score: 0,
-            bridgeBuilt: false
+            score: 0, 
+            bridgeBuilt: [false, false, false, false, false],
+            levelsInitialized: false,
+            lastMudSoundTime: 0
         };
 
-        // --- CONTROLO GYRO (SENSOR) ---
-        const gyro = {
-            active: false,
-            beta: 0,  // Frente/Trás
-            gamma: 0, // Esquerda/Direita
-            alpha: 0
-        };
+        // --- CONTROLO GYRO ---
+        const gyro = { active: false, beta: 0, gamma: 0 };
 
-        // --- JOGADOR (A ESFERA) ---
+        // --- JOGADOR ---
         const player = {
             mesh: null,
             velocity: new THREE.Vector3(),
             speed: 0.1,
             friction: 0.8,
             radius: 0.5,
-            isDirty: false, // Para nível 2
-            holdingBox: false // Para nível 4
+            isDirty: false,
+            holdingBox: false
         };
 
-        // Objetos do nível
-        let levelObjects = [];
-        let bridgePieces = [];
-        let interactables = [];
-        let specialEffects = [];
+        // Arrays globais
+        let allInteractables = []; 
+        let allLevelObjects = [];
+        let particleSystems = [];
 
-        // Input Teclado
+        // Input
         const keys = { w: false, a: false, s: false, d: false };
-
         window.addEventListener('keydown', (e) => {
             if(e.key === 'ArrowUp' || e.key === 'w') keys.w = true;
             if(e.key === 'ArrowDown' || e.key === 's') keys.s = true;
             if(e.key === 'ArrowLeft' || e.key === 'a') keys.a = true;
             if(e.key === 'ArrowRight' || e.key === 'd') keys.d = true;
         });
-
         window.addEventListener('keyup', (e) => {
             if(e.key === 'ArrowUp' || e.key === 'w') keys.w = false;
             if(e.key === 'ArrowDown' || e.key === 's') keys.s = false;
@@ -185,178 +274,126 @@
             if(e.key === 'ArrowRight' || e.key === 'd') keys.d = false;
         });
 
-        // --- LÓGICA DO GIROSCÓPIO ---
+        // Gyro Setup
         const gyroBtn = document.getElementById('gyro-btn');
-
-        // Verificar se o dispositivo suporta (mostra botão se necessário)
-        if (window.DeviceOrientationEvent) {
-            // Se for iOS 13+, precisamos de pedir permissão
-            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                gyroBtn.style.display = 'inline-block';
-                gyroBtn.addEventListener('click', () => {
-                    DeviceOrientationEvent.requestPermission()
-                        .then(response => {
-                            if (response === 'granted') {
-                                window.addEventListener('deviceorientation', handleOrientation);
-                                gyroBtn.style.display = 'none'; // Esconde após ativar
-                                gyro.active = true;
-                            } else {
-                                alert("Permissão negada para sensores.");
-                            }
-                        })
-                        .catch(console.error);
+        if (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function') {
+            gyroBtn.style.display = 'inline-block';
+            gyroBtn.addEventListener('click', () => {
+                playClickSound(); // Som ao clicar
+                DeviceOrientationEvent.requestPermission().then(res => {
+                    if (res === 'granted') {
+                        window.addEventListener('deviceorientation', handleOrientation);
+                        gyroBtn.style.display = 'none';
+                        gyro.active = true;
+                    }
                 });
-            } else {
-                // Android/Outros (geralmente não precisa de clique, mas ativamos no load)
-                window.addEventListener('deviceorientation', handleOrientation);
-                gyro.active = true;
-            }
+            });
+        } else if (window.DeviceOrientationEvent) {
+            window.addEventListener('deviceorientation', handleOrientation);
+            gyro.active = true;
         }
+        function handleOrientation(e) { gyro.beta = e.beta; gyro.gamma = e.gamma; }
 
-        function handleOrientation(event) {
-            // Armazenar valores
-            gyro.beta = event.beta;   // Tilt Frente-Trás (-180 a 180)
-            gyro.gamma = event.gamma; // Tilt Esquerda-Direita (-90 a 90)
-        }
 
-        // --- SISTEMA DE NÍVEIS ---
-
+        // --- DEFINIÇÃO DE NÍVEIS ---
         const levels = [
             {
                 id: 1,
                 name: "Ilha 1: O Bebé",
-                sub: "A Descoberta",
-                desc: "És pequeno e fraco. Encontra o teu lugar no mundo.\nEmpurra as formas geométricas para os seus encaixes.",
+                desc: "Empurra as formas para os encaixes.",
                 color: 0xffcccc,
+                zOffset: 0,
                 setup: setupLevel1,
                 update: updateLevel1
             },
             {
                 id: 2,
                 name: "Ilha 2: A Criança",
-                sub: "A Energia",
-                desc: "Corre, brinca, suja-te.\nUsa a lama para criar o teu caminho.",
+                desc: "Suja-te na lama para criar a ponte.",
                 color: 0x44aa44,
+                zOffset: -ISLAND_SPACING,
                 setup: setupLevel2,
                 update: updateLevel2
             },
             {
                 id: 3,
                 name: "Ilha 3: O Jovem",
-                sub: "A Formação",
-                desc: "Aprende e constrói o teu futuro.\nRecolhe as letras para formar a palavra VIDA.",
+                desc: "Recolhe letras para formar VIDA.",
                 color: 0x3366cc,
+                zOffset: -ISLAND_SPACING * 2,
                 setup: setupLevel3,
                 update: updateLevel3
             },
             {
                 id: 4,
                 name: "Ilha 4: O Adulto",
-                sub: "A Rotina",
-                desc: "O trabalho constrói a ponte.\nCarrega as caixas da zona A para a zona B.",
+                desc: "Trabalha para construir o futuro.",
                 color: 0x888888,
+                zOffset: -ISLAND_SPACING * 3,
                 setup: setupLevel4,
                 update: updateLevel4
             },
             {
                 id: 5,
                 name: "Ilha 5: O Idoso",
-                sub: "A Reflexão",
-                desc: "As memórias desvanecem-se.\nCaminha para a luz.",
+                desc: "Caminha para a luz.",
                 color: 0xdddddd,
+                zOffset: -ISLAND_SPACING * 4,
                 setup: setupLevel5,
                 update: updateLevel5
             }
         ];
 
-        // UI Managers
+        // UI References
         const titleCard = document.getElementById('title-card');
-        const phaseTitle = document.getElementById('phase-title');
-        const phaseDesc = document.getElementById('phase-desc');
         const startBtn = document.getElementById('start-btn');
         const levelInfoUI = document.getElementById('level-info');
         const instructionUI = document.getElementById('instruction');
-        const fadeOverlay = document.getElementById('fade-overlay');
+        const flashOverlay = document.getElementById('flash-overlay');
 
         startBtn.addEventListener('click', () => {
+            playClickSound();
             if (!gameState.started) {
-                gameState.started = true;
-                loadLevel(0);
-            } else {
-                nextLevel();
+                initGame();
             }
             titleCard.style.opacity = 0;
             setTimeout(() => titleCard.style.display = 'none', 1000);
         });
 
-        function showInterLevelScreen(index) {
-            if (index >= levels.length) return; // Fim do jogo
-            const lvl = levels[index];
-            phaseTitle.innerText = lvl.sub;
-            document.querySelector('h1').innerText = lvl.name;
-            phaseDesc.innerText = lvl.desc;
-            startBtn.innerText = "Continuar";
-            // Reset gyro button visibility if needed (opcional, deixamos escondido se já ativado)
+        function initGame() {
+            gameState.started = true;
+            initAudio(); // Começa o áudio aqui
             
-            titleCard.style.display = 'flex';
-            setTimeout(() => titleCard.style.opacity = 1, 10);
-        }
-
-        function loadLevel(index) {
-            gameState.level = index;
-            gameState.bridgeBuilt = false;
-            gameState.score = 0;
-            
-            while(scene.children.length > 0){ scene.remove(scene.children[0]); }
-            scene.add(ambientLight);
-            scene.add(dirLight);
-            
-            levelObjects = [];
-            interactables = [];
-            bridgePieces = [];
-            specialEffects = [];
-            
-            const lvl = levels[index];
-            
-            scene.fog = new THREE.Fog(0x87CEEB, 20, 60);
-            renderer.setClearColor(0x87CEEB);
-
-            levelInfoUI.innerText = lvl.name;
-            instructionUI.innerText = lvl.desc.split('\n')[1];
-            document.getElementById('task-counter').style.display = 'none';
-
-            const planeGeo = new THREE.CylinderGeometry(15, 15, 1, 32);
-            const planeMat = new THREE.MeshStandardMaterial({ color: 0x228b22 });
-            const ground = new THREE.Mesh(planeGeo, planeMat);
-            ground.position.y = -0.5;
-            ground.receiveShadow = true;
-            scene.add(ground);
-
-            const waterGeo = new THREE.PlaneGeometry(100, 100);
+            // Criar Água Infinita
+            const waterGeo = new THREE.PlaneGeometry(200, 600);
             const waterMat = new THREE.MeshBasicMaterial({ color: 0x004488 });
             const water = new THREE.Mesh(waterGeo, waterMat);
             water.rotation.x = -Math.PI / 2;
             water.position.y = -2;
+            water.position.z = -150; 
             scene.add(water);
 
-            lvl.setup();
+            // Inicializar TODAS as ilhas
+            levels.forEach((lvl, index) => {
+                const planeGeo = new THREE.CylinderGeometry(15, 15, 1, 32);
+                const planeMat = new THREE.MeshStandardMaterial({ color: 0x228b22 });
+                const ground = new THREE.Mesh(planeGeo, planeMat);
+                ground.position.set(0, -0.5, lvl.zOffset);
+                ground.receiveShadow = true;
+                ground.userData = { type: 'ground', levelIndex: index };
+                scene.add(ground);
+                allLevelObjects.push(ground);
+
+                lvl.setup(lvl.zOffset);
+            });
+
+            createPlayer(0.4, 0xffcccc, 0, 0);
+            updateUIForLevel(0);
         }
 
-        function nextLevel() {
-            const nextIdx = gameState.level + 1;
-            if (nextIdx < levels.length) {
-                loadLevel(nextIdx);
-            } else {
-                fadeOverlay.style.opacity = 1;
-                setTimeout(() => {
-                    alert("Obrigado por jogar 'A Jornada da Esfera'.");
-                    location.reload();
-                }, 4000);
-            }
-        }
-
-        // --- SETUP ESFERA (PLAYER) ---
         function createPlayer(radius, color, x, z) {
+            if(player.mesh) scene.remove(player.mesh);
+            
             const geo = new THREE.SphereGeometry(radius, 32, 32);
             const mat = new THREE.MeshStandardMaterial({ color: color });
             const mesh = new THREE.Mesh(geo, mat);
@@ -367,444 +404,481 @@
             player.mesh = mesh;
             player.radius = radius;
             player.velocity.set(0,0,0);
-            player.isDirty = false;
-            player.speed = 0.2;
-            player.friction = 0.85;
         }
 
-        // --- NIVEL 1: O BEBÉ ---
-        function setupLevel1() {
-            createPlayer(0.4, 0xffcccc, 0, 0);
-            player.speed = 0.1;
-            player.friction = 0.7;
+        // --- FUNÇÕES DE EFEITOS ESPECIAIS ---
+        
+        function triggerLevelArrivalEffect(levelIndex) {
+            playWinSound(); // Som de sucesso ao chegar
 
+            flashOverlay.style.opacity = 0.8;
+            setTimeout(() => flashOverlay.style.opacity = 0, 500);
+
+            const particleCount = 50;
+            const geometry = new THREE.BufferGeometry();
+            const positions = [];
+            const velocities = [];
+            
+            const zCenter = levels[levelIndex].zOffset;
+
+            for (let i = 0; i < particleCount; i++) {
+                positions.push(0, 2, zCenter + 12); 
+                velocities.push(
+                    (Math.random() - 0.5) * 0.5,
+                    Math.random() * 0.5,
+                    (Math.random() - 0.5) * 0.5
+                );
+            }
+            
+            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+            const material = new THREE.PointsMaterial({ color: levels[levelIndex].color, size: 0.5 });
+            const particles = new THREE.Points(geometry, material);
+            scene.add(particles);
+            
+            particleSystems.push({ mesh: particles, velocities: velocities, age: 0 });
+        }
+
+        function updateParticles() {
+            for (let i = particleSystems.length - 1; i >= 0; i--) {
+                const sys = particleSystems[i];
+                const positions = sys.mesh.geometry.attributes.position.array;
+                sys.age++;
+
+                for (let j = 0; j < sys.velocities.length / 3; j++) {
+                    positions[j*3] += sys.velocities[j*3];
+                    positions[j*3+1] += sys.velocities[j*3+1];
+                    positions[j*3+2] += sys.velocities[j*3+2];
+                }
+                sys.mesh.geometry.attributes.position.needsUpdate = true;
+
+                if (sys.age > 60) {
+                    scene.remove(sys.mesh);
+                    particleSystems.splice(i, 1);
+                }
+            }
+        }
+
+        // --- LOGICA ESPECÍFICA DOS NÍVEIS ---
+
+        // ILHA 1
+        function setupLevel1(zOffset) {
             const shapesData = [
-                { type: 'box', color: 0xff0000, x: -3, z: 3 },
-                { type: 'sphere', color: 0x00ff00, x: 0, z: 3 },
-                { type: 'cone', color: 0x0000ff, x: 3, z: 3 }
+                { type: 'box', color: 0xff0000, x: -3, z: 3 + zOffset },
+                { type: 'sphere', color: 0x00ff00, x: 0, z: 3 + zOffset },
+                { type: 'cone', color: 0x0000ff, x: 3, z: 3 + zOffset }
             ];
             const slotsData = [
-                { type: 'box', x: -3, z: -5 },
-                { type: 'sphere', x: 0, z: -5 },
-                { type: 'cone', x: 3, z: -5 }
+                { type: 'box', x: -3, z: -5 + zOffset },
+                { type: 'sphere', x: 0, z: -5 + zOffset },
+                { type: 'cone', x: 3, z: -5 + zOffset }
             ];
 
             shapesData.forEach(d => {
-                let geo, mesh;
+                let geo;
                 if(d.type === 'box') geo = new THREE.BoxGeometry(1,1,1);
                 if(d.type === 'sphere') geo = new THREE.SphereGeometry(0.6);
                 if(d.type === 'cone') geo = new THREE.ConeGeometry(0.6, 1.2);
-                mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({color: d.color}));
+                const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({color: d.color}));
                 mesh.position.set(d.x, 0.5, d.z);
                 mesh.castShadow = true;
-                mesh.userData = { type: 'movable', shapeType: d.type, locked: false };
+                mesh.userData = { type: 'lvl1_shape', shapeType: d.type, locked: false, originalGeo: geo };
                 scene.add(mesh);
-                interactables.push(mesh);
+                allInteractables.push(mesh);
             });
 
             slotsData.forEach(d => {
-                let geo, mesh;
+                let geo;
                 if(d.type === 'box') geo = new THREE.BoxGeometry(1.2,1.2,1.2);
                 if(d.type === 'sphere') geo = new THREE.SphereGeometry(0.7);
                 if(d.type === 'cone') geo = new THREE.ConeGeometry(0.7, 1.3);
-                mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color: 0xffffff, wireframe: true, opacity: 0.5, transparent: true}));
+                const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color: 0xffffff, wireframe: true, opacity: 0.5, transparent: true}));
                 mesh.position.set(d.x, 0.5, d.z);
-                mesh.userData = { type: 'slot', shapeType: d.type };
+                mesh.userData = { type: 'lvl1_slot', shapeType: d.type };
                 scene.add(mesh);
-                levelObjects.push(mesh);
+                allLevelObjects.push(mesh);
             });
-
-            createBridgePlaceholder(0, -10);
         }
 
         function updateLevel1() {
+            if (gameState.bridgeBuilt[0]) return;
+
             let solvedCount = 0;
-            interactables.forEach(obj => {
+            const zOffset = levels[0].zOffset;
+
+            allInteractables.forEach(obj => {
+                if (obj.userData.type !== 'lvl1_shape') return;
+                
                 if (obj.userData.locked) {
                     solvedCount++;
                     return;
                 }
+
                 const dist = player.mesh.position.distanceTo(obj.position);
                 if (dist < player.radius + 0.8) {
                     const pushDir = new THREE.Vector3().subVectors(obj.position, player.mesh.position);
-                    pushDir.y = 0;
-                    pushDir.normalize();
+                    pushDir.y = 0; pushDir.normalize();
                     obj.position.add(pushDir.multiplyScalar(0.1));
                     obj.position.y = 0.5;
                 }
-                levelObjects.forEach(slot => {
-                    if (slot.userData.shapeType === obj.userData.shapeType) {
+
+                allLevelObjects.forEach(slot => {
+                    if (slot.userData.type === 'lvl1_slot' && slot.userData.shapeType === obj.userData.shapeType) {
                         const dx = obj.position.x - slot.position.x;
                         const dz = obj.position.z - slot.position.z;
-                        const dist2d = Math.sqrt(dx*dx + dz*dz);
-                        if (dist2d < 1) {
+                        if (Math.sqrt(dx*dx + dz*dz) < 1) {
                             obj.position.copy(slot.position);
                             obj.userData.locked = true;
-                            slot.material.color.setHex(0xffff00);
-                            slot.material.wireframe = false;
+                            slot.visible = false; 
+                            obj.material.emissive = new THREE.Color(0x333333);
+                            playClinkSound(); // Som de encaixe
                         }
                     }
                 });
             });
-            if (solvedCount === 3 && !gameState.bridgeBuilt) {
-                buildBridge();
+
+            if (solvedCount === 3) {
+                gameState.bridgeBuilt[0] = true;
+                instructionUI.innerText = "As formas constroem o caminho!";
+                
+                const shapes = allInteractables.filter(o => o.userData.type === 'lvl1_shape');
+                const bridgeZStart = zOffset - 15;
+                const bridgeZEnd = levels[1].zOffset + 15;
+
+                shapes.forEach((s, i) => {
+                    const targetZ = bridgeZStart - (i+1)*10;
+                    s.position.set(0, 0, targetZ);
+                    s.scale.set(3, 0.2, 3); 
+                    s.userData.isBridge = true;
+                });
+                
+                const filler = new THREE.Mesh(new THREE.BoxGeometry(2, 0.2, 40), new THREE.MeshBasicMaterial({color: 0xffffff, transparent: true, opacity: 0.3}));
+                filler.position.set(0, -0.1, (bridgeZStart + bridgeZEnd)/2);
+                scene.add(filler);
             }
         }
 
-        // --- NIVEL 2: A CRIANÇA ---
-        function setupLevel2() {
-            createPlayer(0.6, 0xffaa00, 0, 0); 
-            player.speed = 0.3;
-            player.friction = 0.9;
+
+        // ILHA 2
+        function setupLevel2(zOffset) {
             for(let i=0; i<5; i++) {
-                const puddle = new THREE.Mesh(
-                    new THREE.CircleGeometry(2, 32),
-                    new THREE.MeshBasicMaterial({ color: 0x3e2723 })
-                );
+                const puddle = new THREE.Mesh(new THREE.CircleGeometry(2, 32), new THREE.MeshBasicMaterial({ color: 0x3e2723 }));
                 puddle.rotation.x = -Math.PI/2;
-                puddle.position.set((Math.random()*14)-7, 0.01, (Math.random()*14)-7);
-                puddle.userData = { type: 'mud' };
+                puddle.position.set((Math.random()*14)-7, 0.01, zOffset + (Math.random()*14)-7);
+                puddle.userData = { type: 'lvl2_mud' };
                 scene.add(puddle);
-                levelObjects.push(puddle);
+                allLevelObjects.push(puddle);
             }
-            createBridgePlaceholder(0, -12);
         }
 
         function updateLevel2() {
+            const zOffset = levels[1].zOffset;
             let inMud = false;
-            levelObjects.forEach(obj => {
-                if(obj.userData.type === 'mud') {
+            allLevelObjects.forEach(obj => {
+                if(obj.userData.type === 'lvl2_mud') {
                     const dx = player.mesh.position.x - obj.position.x;
                     const dz = player.mesh.position.z - obj.position.z;
                     if(Math.sqrt(dx*dx + dz*dz) < 2) inMud = true;
                 }
             });
-            if(inMud) {
+
+            if(inMud && gameState.currentLevelIndex === 1) {
                 player.isDirty = true;
                 player.mesh.material.color.setHex(0x3e2723);
+                // Tocar som de lama ocasionalmente
+                if (Date.now() - gameState.lastMudSoundTime > 400 && player.velocity.length() > 0.01) {
+                    playMudSound();
+                    gameState.lastMudSoundTime = Date.now();
+                }
             }
-            if(player.isDirty) {
-                if(player.velocity.length() > 0.01) {
-                    if(Math.random() > 0.5) {
-                        const drip = new THREE.Mesh(
-                            new THREE.CircleGeometry(0.3, 8),
-                            new THREE.MeshBasicMaterial({ color: 0x3e2723 })
-                        );
-                        drip.rotation.x = -Math.PI/2;
-                        drip.position.copy(player.mesh.position);
-                        drip.position.y = 0.02;
-                        scene.add(drip);
-                        specialEffects.push(drip);
+
+            // Construir ponte com sujidade
+            const bridgeStartZ = zOffset - 14;
+            
+            if(player.isDirty && player.mesh.position.z < bridgeStartZ + 2 && player.mesh.position.z > bridgeStartZ - 30) {
+                 if(player.velocity.length() > 0.01 && Math.random() > 0.4) {
+                    const drip = new THREE.Mesh(
+                        new THREE.CircleGeometry(0.5, 8),
+                        new THREE.MeshBasicMaterial({ color: 0x3e2723 })
+                    );
+                    drip.rotation.x = -Math.PI/2;
+                    drip.position.copy(player.mesh.position);
+                    drip.position.y = 0.02;
+                    scene.add(drip);
+                    
+                    // Lógica de progresso
+                    if(!gameState.bridgeBuilt[1]) {
+                        gameState.score++;
+                        if(gameState.score > 40) {
+                            gameState.bridgeBuilt[1] = true;
+                            instructionUI.innerText = "O teu rasto é o caminho. Segue em frente.";
+                            // NOTA: Removi a criação da ponte sólida. 
+                            // Apenas os "drips" (rastos) formam o caminho visual.
+                            // Adicionamos um chão invisível apenas para garantir segurança caso o player caia muito? 
+                            // Não, o jogo permite andar no Z livremente. O rasto é o guia visual.
+                        }
                     }
-                }
-            }
-            const bridgeStart = new THREE.Vector3(0, 0, -10);
-            if(player.isDirty && player.mesh.position.distanceTo(bridgeStart) < 3) {
-                if(!gameState.bridgeBuilt) {
-                    gameState.score++;
-                    if(gameState.score > 50) buildBridge();
-                }
+                 }
             }
         }
 
-        // --- NIVEL 3: O JOVEM ---
-        function setupLevel3() {
-            createPlayer(0.8, 0x3366cc, 0, 8);
-            player.speed = 0.25;
-            const clockFace = new THREE.Mesh(
-                new THREE.CircleGeometry(9, 32),
-                new THREE.MeshBasicMaterial({ color: 0x224488, opacity: 0.3, transparent: true })
-            );
+
+        // ILHA 3
+        function setupLevel3(zOffset) {
+            const clockFace = new THREE.Mesh(new THREE.CircleGeometry(9, 32), new THREE.MeshBasicMaterial({ color: 0x224488, opacity: 0.3, transparent: true }));
             clockFace.rotation.x = -Math.PI/2;
-            clockFace.position.y = 0.01;
+            clockFace.position.set(0, 0.01, zOffset);
             scene.add(clockFace);
-
-            function createTextSprite(text, color) {
-                const canvas = document.createElement('canvas');
-                canvas.width = 128; canvas.height = 128;
-                const ctx = canvas.getContext('2d');
-                ctx.fillStyle = color;
-                ctx.font = 'bold 90px Arial';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(text, 64, 64);
-                const tex = new THREE.CanvasTexture(canvas);
-                const mat = new THREE.SpriteMaterial({ map: tex });
-                const sprite = new THREE.Sprite(mat);
-                sprite.scale.set(2,2,1);
-                return sprite;
-            }
-
-            for (let i = 1; i <= 12; i++) {
-                const angle = (i / 12) * Math.PI * 2;
-                const radius = 7.5;
-                const x = Math.sin(angle) * radius;
-                const z = -Math.cos(angle) * radius;
-                const sprite = createTextSprite(i.toString(), '#ffffff');
-                sprite.position.set(x, 1.5, z);
-                sprite.userData = { type: 'number', val: i };
-                scene.add(sprite);
-                interactables.push(sprite);
-            }
+            allLevelObjects.push(clockFace);
 
             const letters = ['V', 'I', 'D', 'A'];
             const positions = [{x: -2, z: 0}, {x: -0.7, z: 0}, {x: 0.7, z: 0}, {x: 2, z: 0}];
             letters.forEach((char, i) => {
-                const sprite = createTextSprite(char, '#ffff00');
-                sprite.position.set(positions[i].x, 1.5, positions[i].z);
-                sprite.userData = { type: 'letter', char: char };
+                const canvas = document.createElement('canvas'); canvas.width=64; canvas.height=64;
+                const ctx = canvas.getContext('2d'); ctx.fillStyle='#ffff00'; ctx.font='bold 50px Arial'; ctx.fillText(char, 15, 50);
+                const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map: new THREE.CanvasTexture(canvas)}));
+                sprite.position.set(positions[i].x, 1.5, positions[i].z + zOffset);
+                sprite.scale.set(2,2,1);
+                sprite.userData = { type: 'lvl3_letter', char: char };
                 scene.add(sprite);
-                interactables.push(sprite);
+                allInteractables.push(sprite);
             });
-            createBridgePlaceholder(0, -12);
-            instructionUI.innerText = "Forma a palavra: V - I - D - A";
-        }
-
-        function updateLevel3() {
-            let vidaCount = 0;
-            interactables.forEach((obj, index) => {
-                if(obj.visible && player.mesh.position.distanceTo(obj.position) < 1.5) {
-                    obj.visible = false;
-                    if (obj.userData.type === 'letter') {
-                        gameState.score++;
-                        instructionUI.innerText = `Letra ${obj.userData.char} apanhada!`;
-                    } else {
-                        instructionUI.innerText = `Tempo apanhado: ${obj.userData.val}`;
-                    }
-                    setTimeout(()=> {
-                        if (!gameState.bridgeBuilt) instructionUI.innerText = "Forma a palavra: V - I - D - A";
-                    }, 1000);
-                }
-                if (obj.userData.type === 'letter' && obj.visible === false) vidaCount++;
-            });
-            if(vidaCount === 4 && !gameState.bridgeBuilt) {
-                buildBridge();
-                instructionUI.innerText = "PALAVRA FORMADA: VIDA. O tempo passou, o caminho abriu-se.";
+            
+            for (let i = 1; i <= 12; i++) {
+                const angle = (i / 12) * Math.PI * 2;
+                const x = Math.sin(angle) * 7.5;
+                const z = -Math.cos(angle) * 7.5;
+                const canvas = document.createElement('canvas'); canvas.width=64; canvas.height=64;
+                const ctx = canvas.getContext('2d'); ctx.fillStyle='#fff'; ctx.font='bold 40px Arial'; ctx.fillText(i, 20, 40);
+                const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map: new THREE.CanvasTexture(canvas)}));
+                sprite.position.set(x, 1.5, z + zOffset);
+                scene.add(sprite);
+                allInteractables.push(sprite); 
             }
         }
 
-        // --- NIVEL 4: O ADULTO ---
-        function setupLevel4() {
-            createPlayer(0.8, 0x888888, 0, 0);
-            player.speed = 0.2;
-            const scar = new THREE.Mesh(
-                new THREE.TorusGeometry(0.8, 0.05, 16, 100),
-                new THREE.MeshBasicMaterial({ color: 0x220000 })
-            );
-            player.mesh.add(scar);
-            scar.rotation.x = Math.PI/4;
+        function updateLevel3() {
+            if (gameState.bridgeBuilt[2]) return;
+            let lettersFound = 0;
+            const zOffset = levels[2].zOffset;
 
-            const pickupZone = new THREE.Mesh(new THREE.BoxGeometry(3, 0.1, 3), new THREE.MeshBasicMaterial({color: 0x00ff00}));
-            pickupZone.position.set(-6, 0, 0);
-            scene.add(pickupZone);
-            const dropZone = new THREE.Mesh(new THREE.BoxGeometry(3, 0.1, 3), new THREE.MeshBasicMaterial({color: 0xff0000}));
-            dropZone.position.set(6, 0, 0);
-            scene.add(dropZone);
+            allInteractables.forEach(obj => {
+                if (obj.userData.type === 'lvl3_letter') {
+                    if(obj.visible && player.mesh.position.distanceTo(obj.position) < 1.5) {
+                        obj.visible = false;
+                        gameState.score++;
+                        playClinkSound(); // Som
+                    }
+                    if(!obj.visible) lettersFound++;
+                }
+            });
 
-            spawnBox();
-            createBridgePlaceholder(0, -12);
-            document.getElementById('task-counter').style.display = 'block';
-            gameState.score = 0;
+            if(lettersFound === 4) {
+                gameState.bridgeBuilt[2] = true;
+                instructionUI.innerText = "O conhecimento constrói o futuro.";
+                
+                const bridgeText = ['V','I','D','A'];
+                bridgeText.forEach((char, i) => {
+                    const box = new THREE.Mesh(new THREE.BoxGeometry(4, 0.5, 6), new THREE.MeshStandardMaterial({color: 0x3366cc}));
+                    box.position.set(0, 0, zOffset - 18 - (i*8));
+                    scene.add(box);
+                });
+            }
         }
 
-        function spawnBox() {
-            const box = new THREE.Mesh(
-                new THREE.BoxGeometry(1,1,1),
-                new THREE.MeshStandardMaterial({ color: 0x8B4513 })
-            );
-            box.position.set(-6, 1, 0);
-            box.userData = { type: 'cargo' };
+
+        // ILHA 4
+        function setupLevel4(zOffset) {
+            const pickupZone = new THREE.Mesh(new THREE.BoxGeometry(3, 0.1, 3), new THREE.MeshBasicMaterial({color: 0x00ff00}));
+            pickupZone.position.set(-6, 0.01, zOffset);
+            pickupZone.userData = { type: 'lvl4_zone' };
+            scene.add(pickupZone);
+            
+            const dropZone = new THREE.Mesh(new THREE.BoxGeometry(3, 0.1, 3), new THREE.MeshBasicMaterial({color: 0xff0000}));
+            dropZone.position.set(6, 0.01, zOffset);
+            dropZone.userData = { type: 'lvl4_zone' };
+            scene.add(dropZone);
+
+            spawnBoxLevel4(zOffset);
+            gameState.workDays = 0; 
+        }
+
+        function spawnBoxLevel4(zOffset) {
+            const box = new THREE.Mesh(new THREE.BoxGeometry(1,1,1), new THREE.MeshStandardMaterial({ color: 0x8B4513 }));
+            box.position.set(-6, 1, zOffset);
+            box.userData = { type: 'lvl4_cargo' };
             scene.add(box);
-            interactables.push(box);
+            allInteractables.push(box);
         }
 
         function updateLevel4() {
-            const dropZonePos = new THREE.Vector3(6, 0, 0);
+            if (gameState.bridgeBuilt[3]) return;
+            const zOffset = levels[3].zOffset;
+            
             if (player.holdingBox) {
-                if (player.mesh.position.distanceTo(dropZonePos) < 2) {
+                if (player.mesh.position.distanceTo(new THREE.Vector3(6, 0, zOffset)) < 2) {
                     player.holdingBox = false;
-                    player.mesh.children = player.mesh.children.filter(c => c.geometry.type === 'TorusGeometry');
-                    gameState.score++;
-                    document.getElementById('task-counter').innerText = `Dias de Trabalho: ${gameState.score}`;
-                    addBridgeStep(gameState.score);
-                    if (gameState.score < 5) {
-                        spawnBox();
+                    player.mesh.children = player.mesh.children.filter(c => c.userData.id !== 'heldBox');
+                    
+                    gameState.workDays = (gameState.workDays || 0) + 1;
+                    document.getElementById('task-counter').innerText = `Dias: ${gameState.workDays}`;
+                    playClinkSound(); // Som de entrega
+                    
+                    const piece = new THREE.Mesh(new THREE.BoxGeometry(3, 0.5, 6), new THREE.MeshStandardMaterial({color: 0x888888}));
+                    piece.position.set(0, 0, zOffset - 15 - (gameState.workDays * 6));
+                    scene.add(piece);
+
+                    if (gameState.workDays < 5) {
+                        spawnBoxLevel4(zOffset);
                     } else {
-                        gameState.bridgeBuilt = true;
-                        instructionUI.innerText = "Reforma alcançada. Podes seguir.";
+                        gameState.bridgeBuilt[3] = true;
+                        instructionUI.innerText = "Reforma alcançada. Segue em frente.";
                     }
                 }
             } else {
-                interactables.forEach((obj, idx) => {
-                    if (obj.visible && player.mesh.position.distanceTo(obj.position) < 1.5) {
+                allInteractables.forEach(obj => {
+                    if (obj.userData.type === 'lvl4_cargo' && obj.visible && player.mesh.position.distanceTo(obj.position) < 1.5) {
                         obj.visible = false;
                         player.holdingBox = true;
+                        playClinkSound(); // Som de pegar
                         const carryBox = new THREE.Mesh(new THREE.BoxGeometry(0.6,0.6,0.6), new THREE.MeshStandardMaterial({color:0x8B4513}));
                         carryBox.position.y = 1.2;
+                        carryBox.userData = { id: 'heldBox' };
                         player.mesh.add(carryBox);
                     }
                 });
             }
         }
 
-        function addBridgeStep(step) {
-            const piece = new THREE.Mesh(
-                new THREE.BoxGeometry(4, 0.5, 2),
-                new THREE.MeshStandardMaterial({ color: 0x888888 })
-            );
-            piece.position.set(0, 0, -8 - (step * 2.5));
-            scene.add(piece);
-        }
 
-        // --- NIVEL 5: O IDOSO ---
-        function setupLevel5() {
-            createPlayer(0.8, 0xdddddd, 0, 10);
-            player.speed = 0.15;
-            player.friction = 0.99;
-            scene.fog = new THREE.FogExp2(0xffffff, 0.05);
-            renderer.setClearColor(0xffffff);
-
-            createGhost(new THREE.ConeGeometry(0.6,1.2), -3, 5, 0xffcccc);
-            createGhost(new THREE.CircleGeometry(2, 32), 3, 0, 0x5c4033);
-            createGhost(new THREE.BoxGeometry(1,1,1), -2, -5, 0x3366cc);
+        // ILHA 5
+        function setupLevel5(zOffset) {
+            createGhost(new THREE.ConeGeometry(0.6,1.2), -3, zOffset + 5, 0xffcccc);
+            createGhost(new THREE.CircleGeometry(2, 32), 3, zOffset, 0x5c4033);
             
-            instructionUI.innerText = "Caminha para as memórias... e para a Luz.";
-            const lightEnd = new THREE.PointLight(0xffffff, 2, 20);
-            lightEnd.position.set(0, 2, -15);
+            const lightEnd = new THREE.PointLight(0xffffff, 2, 30);
+            lightEnd.position.set(0, 5, zOffset - 20);
             scene.add(lightEnd);
+            
             const orb = new THREE.Mesh(new THREE.SphereGeometry(1), new THREE.MeshBasicMaterial({color:0xffffff}));
-            orb.position.set(0, 2, -15);
+            orb.position.set(0, 2, zOffset - 20);
             orb.userData = { type: 'end_light' };
-            interactables.push(orb);
+            allInteractables.push(orb);
             scene.add(orb);
         }
-
+        
         function createGhost(geo, x, z, color) {
-            const mat = new THREE.MeshBasicMaterial({ 
-                color: color, transparent: true, opacity: 0.6, wireframe: true 
-            });
-            const mesh = new THREE.Mesh(geo, mat);
+            const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color:color, transparent:true, opacity:0.5, wireframe:true}));
             mesh.position.set(x, 0.5, z);
-            if(geo.type === 'CircleGeometry') mesh.rotation.x = -Math.PI/2;
+            if(geo.type==='CircleGeometry') mesh.rotation.x = -Math.PI/2;
             scene.add(mesh);
-            levelObjects.push(mesh);
         }
 
         function updateLevel5() {
-            levelObjects.forEach(obj => {
-                const dist = player.mesh.position.distanceTo(obj.position);
-                if(dist < 5) obj.material.opacity = Math.max(0, (dist - 2) / 3);
-            });
-            interactables.forEach(obj => {
-                if(obj.userData.type === 'end_light') {
-                    if(player.mesh.position.distanceTo(obj.position) < 3) {
-                        fadeOverlay.style.transition = "opacity 5s";
-                        fadeOverlay.style.opacity = 1;
-                        setTimeout(() => {
-                           alert("A Jornada Terminou.\nObrigado por viver esta vida.");
-                           location.reload();
-                        }, 5000);
+            const zOffset = levels[4].zOffset;
+            allInteractables.forEach(obj => {
+                if(obj.userData.type === 'end_light' && player.mesh.position.distanceTo(obj.position) < 3) {
+                    document.getElementById('fade-overlay').style.opacity = 1;
+                    if (audioCtx) {
+                         playTone(523, 'sine', 2, 0.1); // Acorde final
+                         playTone(659, 'sine', 2, 0.1);
+                         playTone(784, 'sine', 2, 0.1);
                     }
+                    setTimeout(()=> { alert("Fim da Jornada."); location.reload(); }, 4000);
                 }
             });
         }
 
-        // --- UTILITÁRIOS GERAIS ---
-        function createBridgePlaceholder(x, z) {
-            const marker = new THREE.Mesh(
-                new THREE.BoxGeometry(4, 0.1, 1),
-                new THREE.MeshBasicMaterial({ color: 0x000000, opacity: 0.3, transparent: true })
-            );
-            marker.position.set(x, 0, z);
-            scene.add(marker);
-        }
 
-        function buildBridge() {
-            if (gameState.bridgeBuilt) return;
-            gameState.bridgeBuilt = true;
-            const bridgeGeo = new THREE.BoxGeometry(4, 0.5, 15);
-            const bridgeMat = new THREE.MeshStandardMaterial({ color: 0xffd700 });
-            const bridge = new THREE.Mesh(bridgeGeo, bridgeMat);
-            bridge.position.set(0, 0, -15); 
-            scene.add(bridge);
-            instructionUI.innerText = "O caminho abriu-se! Segue em frente.";
-        }
+        // --- SISTEMA DE ZONAS ---
+        function updateZoneLogic() {
+            const pZ = player.mesh.position.z;
+            let newLevelIndex = gameState.currentLevelIndex;
 
-        function checkExit() {
-            if (gameState.bridgeBuilt && player.mesh.position.z < -20) {
-                showInterLevelScreen(gameState.level + 1);
-                titleCard.style.display = 'flex';
-                setTimeout(() => titleCard.style.opacity = 1, 100);
+            levels.forEach((lvl, i) => {
+                if (Math.abs(pZ - lvl.zOffset) < 20) {
+                    newLevelIndex = i;
+                }
+            });
+
+            if (newLevelIndex !== gameState.currentLevelIndex) {
+                gameState.currentLevelIndex = newLevelIndex;
+                updateUIForLevel(newLevelIndex);
+                triggerLevelArrivalEffect(newLevelIndex);
+                
+                player.mesh.material.color.setHex(levels[newLevelIndex].color);
+                gameState.score = 0; 
+                
+                if(newLevelIndex === 3) {
+                    const scar = new THREE.Mesh(new THREE.TorusGeometry(0.8, 0.05, 16, 100), new THREE.MeshBasicMaterial({ color: 0x220000 }));
+                    scar.rotation.x = Math.PI/4;
+                    player.mesh.add(scar);
+                }
+                if(newLevelIndex === 4) {
+                    player.friction = 0.99;
+                    scene.fog.density = 0.05;
+                }
             }
         }
+
+        function updateUIForLevel(index) {
+            const lvl = levels[index];
+            levelInfoUI.innerText = lvl.name;
+            levelInfoUI.style.color = '#' + lvl.color.toString(16);
+            instructionUI.innerText = lvl.desc;
+            document.getElementById('task-counter').style.display = (index === 3) ? 'block' : 'none';
+        }
+
 
         // --- LOOP PRINCIPAL ---
         function animate() {
             requestAnimationFrame(animate);
+            if (!gameState.started || !player.mesh) return;
 
-            if (!gameState.started) return;
-
-            if (player.mesh) {
-                // INPUT TECLADO
-                if (keys.w) player.velocity.z -= player.speed * 0.1;
-                if (keys.s) player.velocity.z += player.speed * 0.1;
-                if (keys.a) player.velocity.x -= player.speed * 0.1;
-                if (keys.d) player.velocity.x += player.speed * 0.1;
-
-                // INPUT GIROSCÓPIO (Telemóvel)
-                if (gyro.active) {
-                    // Beta (Frente/Trás): Negativo = Frente, Positivo = Trás
-                    // Gamma (Esq/Dir): Negativo = Esquerda, Positivo = Direita
-                    
-                    // Zona morta (5 graus) para evitar drift
-                    const deadzone = 5;
-                    const sensitivity = 0.003; // Ajuste de sensibilidade
-
-                    if (Math.abs(gyro.beta) > deadzone) {
-                        // Clamp para evitar velocidades malucas se virar o telemóvel ao contrário
-                        const val = THREE.MathUtils.clamp(gyro.beta, -45, 45);
-                        player.velocity.z += val * sensitivity * player.speed; 
-                    }
-
-                    if (Math.abs(gyro.gamma) > deadzone) {
-                        const val = THREE.MathUtils.clamp(gyro.gamma, -45, 45);
-                        player.velocity.x += val * sensitivity * player.speed;
-                    }
-                }
-
-                player.mesh.position.add(player.velocity);
-                player.velocity.multiplyScalar(player.friction);
-
-                const dist = Math.sqrt(player.mesh.position.x**2 + player.mesh.position.z**2);
-                const onBridge = (gameState.bridgeBuilt && player.mesh.position.z < -10 && Math.abs(player.mesh.position.x) < 3);
-                
-                if (dist > 14 && !onBridge) {
-                    player.mesh.position.set(0, 1, 0);
-                    player.velocity.set(0,0,0);
-                }
-
-                camera.position.x = player.mesh.position.x;
-                camera.position.z = player.mesh.position.z + 10;
-                camera.position.y = player.mesh.position.y + 8;
-                camera.lookAt(player.mesh.position);
+            // INPUT
+            if (keys.w) player.velocity.z -= player.speed * 0.1;
+            if (keys.s) player.velocity.z += player.speed * 0.1;
+            if (keys.a) player.velocity.x -= player.speed * 0.1;
+            if (keys.d) player.velocity.x += player.speed * 0.1;
+            
+            if (gyro.active) {
+                 const deadzone = 2;
+                 if (Math.abs(gyro.beta) > deadzone) player.velocity.z += THREE.MathUtils.clamp(gyro.beta, -45, 45) * 0.003 * player.speed;
+                 if (Math.abs(gyro.gamma) > deadzone) player.velocity.x += THREE.MathUtils.clamp(gyro.gamma, -45, 45) * 0.003 * player.speed;
             }
 
-            const lvl = levels[gameState.level];
-            if (lvl && lvl.update) lvl.update();
+            player.mesh.position.add(player.velocity);
+            player.velocity.multiplyScalar(player.friction);
 
-            checkExit();
+            // COLISÃO BÁSICA COM CHÃO
+            if (Math.abs(player.mesh.position.x) > 15) {
+                player.mesh.position.x = 0; 
+                player.velocity.set(0,0,0);
+            }
+
+            camera.position.x = player.mesh.position.x;
+            camera.position.z = player.mesh.position.z + 12;
+            camera.position.y = player.mesh.position.y + 10;
+            camera.lookAt(player.mesh.position);
+
+            updateLevel1();
+            updateLevel2();
+            updateLevel3();
+            updateLevel4();
+            updateLevel5();
+            
+            updateZoneLogic();
+            updateParticles();
 
             renderer.render(scene, camera);
         }
 
         animate();
-
+        
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
-
     </script>
 </body>
 </html>
