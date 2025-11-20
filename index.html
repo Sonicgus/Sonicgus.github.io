@@ -143,6 +143,13 @@
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         let audioCtx;
         let musicInterval;
+        
+        // Definição das escalas musicais
+        const MUSIC_SCALES = {
+            'normal': [261.63, 293.66, 329.63, 392.00, 440.00, 523.25], // C Major (Alegre/Neutro)
+            'creepy': [110.00, 116.54, 130.81, 146.83, 155.56, 123.47]   // Tons graves e dissonantes (Creepy)
+        };
+        let currentMusicMood = 'normal';
 
         function initAudio() {
             if (!audioCtx) {
@@ -193,18 +200,32 @@
         }
 
         function startAmbientMusic() {
-            const notes = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25]; 
             let noteIdx = 0;
             if (musicInterval) clearInterval(musicInterval);
+            
             musicInterval = setInterval(() => {
-                const freq = notes[Math.floor(Math.random() * notes.length)];
-                playTone(freq / 2, 'sine', 4, 0.02);
-                if(Math.random() > 0.7) {
-                    setTimeout(() => playTone(freq * 2, 'triangle', 2, 0.01), 500);
+                const scale = MUSIC_SCALES[currentMusicMood];
+                const freq = scale[Math.floor(Math.random() * scale.length)];
+                
+                if (currentMusicMood === 'normal') {
+                    // Música Normal: Sine wave suave
+                    playTone(freq / 2, 'sine', 4, 0.02);
+                    if(Math.random() > 0.7) {
+                        setTimeout(() => playTone(freq * 2, 'triangle', 2, 0.01), 500);
+                    }
+                } else {
+                    // Música Creepy: Mais lenta, grave e ondas "frias"
+                    // Usamos frequências aleatórias ligeiramente desafinadas para criar tensão
+                    const detune = (Math.random() - 0.5) * 5;
+                    playTone((freq + detune), 'sine', 5, 0.05); // Volume um pouco mais alto para o drone grave
+                    
+                    // Ocasionalmente um som agudo e dissonante "fantasmagórico"
+                    if(Math.random() > 0.8) {
+                        setTimeout(() => playTone(freq * 4 + detune, 'sine', 1.5, 0.02), 1000);
+                    }
                 }
-            }, 3000);
+            }, currentMusicMood === 'normal' ? 3000 : 4000); // Mais lento no modo creepy
         }
-
 
         // --- CONFIGURAÇÃO GERAL ---
         const ISLAND_SPACING = 60; 
@@ -840,14 +861,38 @@
                 player.mesh.material.color.setHex(levels[newLevelIndex].color);
                 gameState.score = 0; 
                 
-                if(newLevelIndex === 3) {
+                // Reset physics defaults
+                player.speed = 0.1;
+                player.friction = 0.8;
+                scene.fog.density = 0.01; // Reset fog
+                
+                // Lógica específica por nível
+                if(newLevelIndex === 3) { // Adulto
                     const scar = new THREE.Mesh(new THREE.TorusGeometry(0.8, 0.05, 16, 100), new THREE.MeshBasicMaterial({ color: 0x220000 }));
                     scar.rotation.x = Math.PI/4;
                     player.mesh.add(scar);
                 }
-                if(newLevelIndex === 4) {
-                    player.friction = 0.99;
+                
+                if(newLevelIndex === 4) { // Idoso
+                    // FÍSICA DO IDOSO CORRIGIDA
+                    // Aumentamos drasticamente a inércia (friction 0.99)
+                    // MAS reduzimos muito a aceleração (speed) para compensar e não acumular velocidade infinita
+                    player.friction = 0.99; 
+                    player.speed = 0.005; // Muito baixo para equilibrar com a fricção alta
+                    
                     scene.fog.density = 0.05;
+                    
+                    // Mudar música para creepy
+                    if (currentMusicMood !== 'creepy') {
+                        currentMusicMood = 'creepy';
+                        startAmbientMusic(); // Reinicia o loop com nova escala
+                    }
+                } else {
+                    // Voltar a música normal se sair do nível do idoso (caso o jogador ande para trás)
+                    if (currentMusicMood !== 'normal') {
+                        currentMusicMood = 'normal';
+                        startAmbientMusic();
+                    }
                 }
             }
         }
