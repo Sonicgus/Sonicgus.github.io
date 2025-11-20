@@ -133,14 +133,13 @@
             }
         }
         
-        // Re-adquirir wake lock se a aba ficar visível novamente
         document.addEventListener('visibilitychange', async () => {
             if (wakeLock !== null && document.visibilityState === 'visible') {
                 await requestWakeLock();
             }
         });
 
-        // --- SISTEMA DE ÁUDIO (Web Audio API) ---
+        // --- SISTEMA DE ÁUDIO ---
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         let audioCtx;
         let musicInterval;
@@ -154,28 +153,22 @@
             }
         }
 
-        // Sintetizador Simples
         function playTone(freq, type, duration, vol = 0.1) {
             if (!audioCtx) return;
             const osc = audioCtx.createOscillator();
             const gain = audioCtx.createGain();
-            
             osc.type = type;
             osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-            
             gain.gain.setValueAtTime(vol, audioCtx.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-            
             osc.connect(gain);
             gain.connect(audioCtx.destination);
-            
             osc.start();
             osc.stop(audioCtx.currentTime + duration);
         }
 
-        // Sons Específicos
         function playHoverSound() {
-            if(!audioCtx) return; // Só toca se já tiver interagido uma vez ou iniciado
+            if(!audioCtx) return;
             playTone(400, 'sine', 0.1, 0.05);
         }
 
@@ -192,7 +185,6 @@
         }
 
         function playMudSound() {
-            // Som grave e curto para simular lama
             playTone(100 + Math.random()*50, 'sawtooth', 0.1, 0.05);
         }
 
@@ -200,24 +192,17 @@
             playTone(1200, 'sine', 0.1, 0.05);
         }
 
-        // Música Ambiente Procedural
         function startAmbientMusic() {
-            const notes = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25]; // Escala C Major
+            const notes = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25]; 
             let noteIdx = 0;
-            
             if (musicInterval) clearInterval(musicInterval);
-
             musicInterval = setInterval(() => {
-                // Tocar uma nota aleatória da escala com muito reverb (simulado com release longo)
                 const freq = notes[Math.floor(Math.random() * notes.length)];
-                // Oitava abaixo para fundo
                 playTone(freq / 2, 'sine', 4, 0.02);
-                
-                // Ocasionalmente uma nota aguda
                 if(Math.random() > 0.7) {
                     setTimeout(() => playTone(freq * 2, 'triangle', 2, 0.01), 500);
                 }
-            }, 3000); // A cada 3 segundos
+            }, 3000);
         }
 
 
@@ -299,7 +284,7 @@
         if (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function') {
             gyroBtn.style.display = 'inline-block';
             gyroBtn.addEventListener('click', () => {
-                playClickSound(); // Som ao clicar
+                playClickSound();
                 DeviceOrientationEvent.requestPermission().then(res => {
                     if (res === 'granted') {
                         window.addEventListener('deviceorientation', handleOrientation);
@@ -338,7 +323,7 @@
             {
                 id: 3,
                 name: "Ilha 3: O Jovem",
-                desc: "Recolhe letras para formar VIDA.",
+                desc: "Recolhe letras para construir o teu caminho.",
                 color: 0x3366cc,
                 zOffset: -ISLAND_SPACING * 2,
                 setup: setupLevel3,
@@ -382,10 +367,9 @@
 
         function initGame() {
             gameState.started = true;
-            initAudio(); // Começa o áudio aqui
-            requestWakeLock(); // Prevenir ecrã de dormir
+            initAudio();
+            requestWakeLock();
             
-            // Criar Água Infinita
             const waterGeo = new THREE.PlaneGeometry(200, 600);
             const waterMat = new THREE.MeshBasicMaterial({ color: 0x004488 });
             const water = new THREE.Mesh(waterGeo, waterMat);
@@ -394,7 +378,6 @@
             water.position.z = -150; 
             scene.add(water);
 
-            // Inicializar TODAS as ilhas
             levels.forEach((lvl, index) => {
                 const planeGeo = new THREE.CylinderGeometry(15, 15, 1, 32);
                 const planeMat = new THREE.MeshStandardMaterial({ color: 0x228b22 });
@@ -427,10 +410,8 @@
             player.velocity.set(0,0,0);
         }
 
-        // --- FUNÇÕES DE EFEITOS ESPECIAIS ---
-        
         function triggerLevelArrivalEffect(levelIndex) {
-            playWinSound(); // Som de sucesso ao chegar
+            playWinSound(); 
 
             flashOverlay.style.opacity = 0.8;
             setTimeout(() => flashOverlay.style.opacity = 0, 500);
@@ -439,7 +420,6 @@
             const geometry = new THREE.BufferGeometry();
             const positions = [];
             const velocities = [];
-            
             const zCenter = levels[levelIndex].zOffset;
 
             for (let i = 0; i < particleCount; i++) {
@@ -450,12 +430,10 @@
                     (Math.random() - 0.5) * 0.5
                 );
             }
-            
             geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
             const material = new THREE.PointsMaterial({ color: levels[levelIndex].color, size: 0.5 });
             const particles = new THREE.Points(geometry, material);
             scene.add(particles);
-            
             particleSystems.push({ mesh: particles, velocities: velocities, age: 0 });
         }
 
@@ -464,14 +442,12 @@
                 const sys = particleSystems[i];
                 const positions = sys.mesh.geometry.attributes.position.array;
                 sys.age++;
-
                 for (let j = 0; j < sys.velocities.length / 3; j++) {
                     positions[j*3] += sys.velocities[j*3];
                     positions[j*3+1] += sys.velocities[j*3+1];
                     positions[j*3+2] += sys.velocities[j*3+2];
                 }
                 sys.mesh.geometry.attributes.position.needsUpdate = true;
-
                 if (sys.age > 60) {
                     scene.remove(sys.mesh);
                     particleSystems.splice(i, 1);
@@ -551,7 +527,7 @@
                             obj.userData.locked = true;
                             slot.visible = false; 
                             obj.material.emissive = new THREE.Color(0x333333);
-                            playClinkSound(); // Som de encaixe
+                            playClinkSound();
                         }
                     }
                 });
@@ -605,14 +581,12 @@
             if(inMud && gameState.currentLevelIndex === 1) {
                 player.isDirty = true;
                 player.mesh.material.color.setHex(0x3e2723);
-                // Tocar som de lama ocasionalmente
                 if (Date.now() - gameState.lastMudSoundTime > 400 && player.velocity.length() > 0.01) {
                     playMudSound();
                     gameState.lastMudSoundTime = Date.now();
                 }
             }
 
-            // Construir ponte com sujidade
             const bridgeStartZ = zOffset - 14;
             
             if(player.isDirty && player.mesh.position.z < bridgeStartZ + 2 && player.mesh.position.z > bridgeStartZ - 30) {
@@ -626,16 +600,11 @@
                     drip.position.y = 0.02;
                     scene.add(drip);
                     
-                    // Lógica de progresso
                     if(!gameState.bridgeBuilt[1]) {
                         gameState.score++;
                         if(gameState.score > 40) {
                             gameState.bridgeBuilt[1] = true;
                             instructionUI.innerText = "O teu rasto é o caminho. Segue em frente.";
-                            // NOTA: Removi a criação da ponte sólida. 
-                            // Apenas os "drips" (rastos) formam o caminho visual.
-                            // Adicionamos um chão invisível apenas para garantir segurança caso o player caia muito? 
-                            // Não, o jogo permite andar no Z livremente. O rasto é o guia visual.
                         }
                     }
                  }
@@ -677,6 +646,49 @@
             }
         }
 
+        // Função auxiliar para criar bloco com letra
+        function createBridgeBlock(char, index, zOffset) {
+             const boxGeo = new THREE.BoxGeometry(4, 0.5, 6);
+             
+             // Criar textura com a letra
+             const canvas = document.createElement('canvas');
+             canvas.width = 256; canvas.height = 256;
+             const ctx = canvas.getContext('2d');
+             
+             // Fundo azul
+             ctx.fillStyle = '#3366cc';
+             ctx.fillRect(0, 0, 256, 256);
+             
+             // Letra
+             ctx.fillStyle = '#ffffff';
+             ctx.font = 'bold 150px Arial';
+             ctx.textAlign = 'center';
+             ctx.textBaseline = 'middle';
+             ctx.fillText(char, 128, 128);
+             
+             // Borda
+             ctx.strokeStyle = '#ffffff';
+             ctx.lineWidth = 10;
+             ctx.strokeRect(10, 10, 236, 236);
+             
+             const texture = new THREE.CanvasTexture(canvas);
+             const mat = new THREE.MeshStandardMaterial({ map: texture });
+             
+             const box = new THREE.Mesh(boxGeo, mat);
+             // Posicionar bloco sequencialmente (0, 1, 2, 3)
+             box.position.set(0, 0, zOffset - 18 - (index * 6.5));
+             scene.add(box);
+             
+             // Pequena animação de "pop"
+             box.scale.set(0.1, 0.1, 0.1);
+             let s = 0.1;
+             const grow = setInterval(() => {
+                 s += 0.1;
+                 box.scale.set(s, s, s);
+                 if (s >= 1) clearInterval(grow);
+             }, 20);
+        }
+
         function updateLevel3() {
             if (gameState.bridgeBuilt[2]) return;
             let lettersFound = 0;
@@ -686,8 +698,14 @@
                 if (obj.userData.type === 'lvl3_letter') {
                     if(obj.visible && player.mesh.position.distanceTo(obj.position) < 1.5) {
                         obj.visible = false;
-                        gameState.score++;
-                        playClinkSound(); // Som
+                        gameState.score++; // Incrementa score (1, 2, 3, 4...)
+                        playClinkSound();
+                        
+                        // Adiciona bloco IMEDIATAMENTE
+                        // Usa gameState.score-1 para ter índice 0,1,2,3
+                        createBridgeBlock(obj.userData.char, gameState.score - 1, zOffset);
+                        
+                        instructionUI.innerText = `Adicionado bloco "${obj.userData.char}" à ponte!`;
                     }
                     if(!obj.visible) lettersFound++;
                 }
@@ -695,14 +713,7 @@
 
             if(lettersFound === 4) {
                 gameState.bridgeBuilt[2] = true;
-                instructionUI.innerText = "O conhecimento constrói o futuro.";
-                
-                const bridgeText = ['V','I','D','A'];
-                bridgeText.forEach((char, i) => {
-                    const box = new THREE.Mesh(new THREE.BoxGeometry(4, 0.5, 6), new THREE.MeshStandardMaterial({color: 0x3366cc}));
-                    box.position.set(0, 0, zOffset - 18 - (i*8));
-                    scene.add(box);
-                });
+                instructionUI.innerText = "Caminho completo. O conhecimento é o teu suporte.";
             }
         }
 
@@ -742,7 +753,7 @@
                     
                     gameState.workDays = (gameState.workDays || 0) + 1;
                     document.getElementById('task-counter').innerText = `Dias: ${gameState.workDays}`;
-                    playClinkSound(); // Som de entrega
+                    playClinkSound(); 
                     
                     const piece = new THREE.Mesh(new THREE.BoxGeometry(3, 0.5, 6), new THREE.MeshStandardMaterial({color: 0x888888}));
                     piece.position.set(0, 0, zOffset - 15 - (gameState.workDays * 6));
@@ -760,7 +771,7 @@
                     if (obj.userData.type === 'lvl4_cargo' && obj.visible && player.mesh.position.distanceTo(obj.position) < 1.5) {
                         obj.visible = false;
                         player.holdingBox = true;
-                        playClinkSound(); // Som de pegar
+                        playClinkSound(); 
                         const carryBox = new THREE.Mesh(new THREE.BoxGeometry(0.6,0.6,0.6), new THREE.MeshStandardMaterial({color:0x8B4513}));
                         carryBox.position.y = 1.2;
                         carryBox.userData = { id: 'heldBox' };
@@ -800,7 +811,7 @@
                 if(obj.userData.type === 'end_light' && player.mesh.position.distanceTo(obj.position) < 3) {
                     document.getElementById('fade-overlay').style.opacity = 1;
                     if (audioCtx) {
-                         playTone(523, 'sine', 2, 0.1); // Acorde final
+                         playTone(523, 'sine', 2, 0.1); 
                          playTone(659, 'sine', 2, 0.1);
                          playTone(784, 'sine', 2, 0.1);
                     }
