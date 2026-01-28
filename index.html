@@ -2,960 +2,652 @@
 <html lang="pt-PT">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>A Jornada da Esfera</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Desenhador de Funções Algébricas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; touch-action: none; }
-        #ui-layer {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 20px;
-            box-sizing: border-box;
-            color: white;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            touch-action: none; 
         }
-        #title-card {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            pointer-events: auto;
-            transition: opacity 1s;
-            z-index: 100;
-            text-align: center;
+        canvas {
+            cursor: crosshair;
         }
-        h1 { margin: 0; font-size: 3rem; color: #ffd700; }
-        h2 { margin-top: 10px; font-weight: 300; color: #aaa; }
-        p { max-width: 600px; line-height: 1.6; margin: 20px; font-size: 1.1rem; }
-        button {
-            padding: 15px 40px;
-            font-size: 1.2rem;
-            background: white;
-            border: none;
-            cursor: pointer;
-            border-radius: 30px;
-            transition: transform 0.2s, background 0.2s;
-            color: #333;
-            font-weight: bold;
-            margin: 10px;
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
         }
-        button:hover { transform: scale(1.1); background: #f0f0f0; }
-        #level-info { font-size: 1.5rem; font-weight: bold; transition: color 0.5s; }
-        #instruction { font-size: 1.1rem; color: #ddd; margin-top: 5px; }
-        #task-counter { font-size: 1.2rem; color: #88ccff; display: none; }
-        
-        /* Fade Overlay */
-        #fade-overlay {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: white;
-            opacity: 0;
-            pointer-events: none;
-            z-index: 200;
-            transition: opacity 3s ease-in-out;
+        ::-webkit-scrollbar-track {
+            background: #1e293b; 
         }
-        
-        /* Flash Effect Overlay */
-        #flash-overlay {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: white;
-            opacity: 0;
-            pointer-events: none;
-            z-index: 150;
-            transition: opacity 0.5s;
+        ::-webkit-scrollbar-thumb {
+            background: #475569; 
+            border-radius: 3px;
         }
-
-        #controls-hint {
-            position: absolute;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            color: rgba(255,255,255,0.5);
-            font-size: 0.9rem;
-            text-align: center;
-            width: 100%;
-        }
-
-        #gyro-btn {
-            background: #4488ff;
-            color: white;
-            display: none;
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b; 
         }
     </style>
-    <!-- Import Three.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 </head>
-<body>
+<body class="bg-slate-900 text-slate-100 h-screen flex flex-col overflow-hidden">
 
-    <div id="ui-layer">
+    <!-- Header -->
+    <header class="p-4 bg-slate-800 shadow-md flex justify-between items-center z-10">
         <div>
-            <div id="level-info">Prólogo</div>
-            <div id="instruction">Prepara-te para a jornada.</div>
-            <div id="task-counter">Dias: 0</div>
+            <h1 class="text-xl font-bold text-blue-400">Descobridor de Funções</h1>
+            <p class="text-xs text-slate-400">Suporta: Polinómios, Sen/Cos, Exponenciais ($e^x$) e Logaritmos ($\ln x$)</p>
         </div>
-        <div id="controls-hint">Setas, WASD ou Inclinar Telemóvel</div>
-    </div>
+        <div class="flex gap-2">
+            <!-- Botão Toggle Resultados -->
+            <button onclick="toggleResults()" class="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-lg font-medium transition shadow-lg flex items-center gap-2" title="Mostrar/Ocultar Equações">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span class="hidden sm:inline">Equações</span>
+            </button>
+            
+            <button onclick="analyzeAllCurves()" class="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-lg font-medium transition shadow-lg flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                Calcular
+            </button>
+            <button onclick="clearAll()" class="bg-slate-600 hover:bg-slate-500 text-white px-4 py-2 rounded-lg font-medium transition shadow-lg">
+                Limpar
+            </button>
+        </div>
+    </header>
 
-    <div id="title-card">
-        <h1>A Jornada da Esfera</h1>
-        <h2 id="phase-title">Prólogo</h2>
-        <p id="phase-desc">Uma representação jogável do sentido da vida.<br>Agora num mundo contínuo e conectado.</p>
-        <!-- Botões com efeitos sonoros -->
-        <button id="start-btn" onmouseenter="playHoverSound()">Começar Jornada</button>
-        <button id="gyro-btn" onmouseenter="playHoverSound()">Ativar Sensores de Movimento</button>
-    </div>
+    <!-- Main Content -->
+    <main class="flex-grow relative flex items-center justify-center bg-slate-900">
+        
+        <!-- Result Overlay -->
+        <div id="resultPanel" class="absolute top-4 left-4 right-4 md:left-auto md:right-4 md:w-96 max-h-[80vh] overflow-y-auto bg-slate-800/95 backdrop-blur-sm p-4 rounded-xl border border-slate-700 shadow-2xl hidden transition-all z-20 flex flex-col gap-3">
+            <div class="flex justify-between items-center border-b border-slate-700 pb-2">
+                <h3 class="text-sm uppercase tracking-wider text-slate-400 font-bold">Funções Detetadas</h3>
+                <span id="functionCount" class="text-xs text-blue-400 bg-blue-400/10 px-2 py-1 rounded-full">0</span>
+                <!-- Pequeno botão X para fechar também no painel -->
+                <button onclick="toggleResults()" class="text-slate-400 hover:text-white ml-auto">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                    </svg>
+                </button>
+            </div>
+            
+            <div id="equationsList" class="flex flex-col gap-2">
+                <!-- Template Item -->
+            </div>
+        </div>
 
-    <div id="fade-overlay"></div>
-    <div id="flash-overlay"></div>
+        <!-- Canvas Container -->
+        <div class="relative shadow-2xl rounded-lg overflow-hidden border border-slate-700" style="width: 95%; height: 85%;">
+            <canvas id="mainCanvas" class="bg-slate-950 w-full h-full"></canvas>
+            
+            <div id="instructions" class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-slate-500 select-none">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mb-4 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+                <p class="text-lg">Arraste para desenhar</p>
+                <p class="text-sm opacity-70">Ligue pontos para criar funções por partes (piecewise)</p>
+            </div>
+        </div>
+    </main>
 
     <script>
-        // --- WAKE LOCK (PREVENIR ECRÃ DE DORMIR) ---
-        let wakeLock = null;
-        async function requestWakeLock() {
-            try {
-                if ('wakeLock' in navigator) {
-                    wakeLock = await navigator.wakeLock.request('screen');
-                    console.log('Wake Lock active');
-                }
-            } catch (err) {
-                console.log('Wake Lock error:', err);
-            }
-        }
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        const instructions = document.getElementById('instructions');
+        const resultPanel = document.getElementById('resultPanel');
+        const equationsList = document.getElementById('equationsList');
+        const functionCount = document.getElementById('functionCount');
         
-        document.addEventListener('visibilitychange', async () => {
-            if (wakeLock !== null && document.visibilityState === 'visible') {
-                await requestWakeLock();
-            }
-        });
-
-        // --- SISTEMA DE ÁUDIO ---
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        let audioCtx;
-        let musicInterval;
+        // State
+        let isDrawing = false;
+        let strokes = []; 
+        let currentStroke = []; 
+        let analyzedModels = []; 
         
-        // Definição das escalas musicais
-        const MUSIC_SCALES = {
-            'normal': [261.63, 293.66, 329.63, 392.00, 440.00, 523.25], // C Major (Alegre/Neutro)
-            'creepy': [110.00, 116.54, 130.81, 146.83, 155.56, 123.47]   // Tons graves e dissonantes (Creepy)
-        };
-        let currentMusicMood = 'normal';
+        let width, height;
+        let originX, originY;
+        let scale = 40; 
 
-        function initAudio() {
-            if (!audioCtx) {
-                audioCtx = new AudioContext();
-                startAmbientMusic();
-            } else if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
+        function resize() {
+            const parent = canvas.parentElement;
+            canvas.width = parent.clientWidth;
+            canvas.height = parent.clientHeight;
+            width = canvas.width;
+            height = canvas.height;
+            originX = width / 2;
+            originY = height / 2;
+            renderAll();
         }
+        window.addEventListener('resize', resize);
 
-        function playTone(freq, type, duration, vol = 0.1) {
-            if (!audioCtx) return;
-            const osc = audioCtx.createOscillator();
-            const gain = audioCtx.createGain();
-            osc.type = type;
-            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-            gain.gain.setValueAtTime(vol, audioCtx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-            osc.connect(gain);
-            gain.connect(audioCtx.destination);
-            osc.start();
-            osc.stop(audioCtx.currentTime + duration);
-        }
-
-        function playHoverSound() {
-            if(!audioCtx) return;
-            playTone(400, 'sine', 0.1, 0.05);
-        }
-
-        function playClickSound() {
-            initAudio();
-            playTone(600, 'square', 0.2, 0.1);
-            playTone(800, 'sine', 0.3, 0.1);
-        }
-
-        function playWinSound() {
-            playTone(440, 'sine', 0.5, 0.1);
-            setTimeout(() => playTone(554, 'sine', 0.5, 0.1), 100);
-            setTimeout(() => playTone(659, 'sine', 1.0, 0.1), 200);
-        }
-
-        function playMudSound() {
-            playTone(100 + Math.random()*50, 'sawtooth', 0.1, 0.05);
-        }
-
-        function playClinkSound() {
-            playTone(1200, 'sine', 0.1, 0.05);
-        }
-
-        function startAmbientMusic() {
-            let noteIdx = 0;
-            if (musicInterval) clearInterval(musicInterval);
-            
-            musicInterval = setInterval(() => {
-                const scale = MUSIC_SCALES[currentMusicMood];
-                const freq = scale[Math.floor(Math.random() * scale.length)];
-                
-                if (currentMusicMood === 'normal') {
-                    // Música Normal: Sine wave suave
-                    playTone(freq / 2, 'sine', 4, 0.02);
-                    if(Math.random() > 0.7) {
-                        setTimeout(() => playTone(freq * 2, 'triangle', 2, 0.01), 500);
-                    }
-                } else {
-                    // Música Creepy: Mais lenta, grave e ondas "frias"
-                    // Usamos frequências aleatórias ligeiramente desafinadas para criar tensão
-                    const detune = (Math.random() - 0.5) * 5;
-                    playTone((freq + detune), 'sine', 5, 0.05); // Volume um pouco mais alto para o drone grave
-                    
-                    // Ocasionalmente um som agudo e dissonante "fantasmagórico"
-                    if(Math.random() > 0.8) {
-                        setTimeout(() => playTone(freq * 4 + detune, 'sine', 1.5, 0.02), 1000);
-                    }
-                }
-            }, currentMusicMood === 'normal' ? 3000 : 4000); // Mais lento no modo creepy
-        }
-
-        // --- CONFIGURAÇÃO GERAL ---
-        const ISLAND_SPACING = 60; 
-
-        // --- CONFIGURAÇÃO DO MOTOR (THREE.JS) ---
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87CEEB);
-        scene.fog = new THREE.Fog(0x87CEEB, 20, 80); 
-
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.shadowMap.enabled = true;
-        document.body.appendChild(renderer.domElement);
-
-        // Luzes
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
-        scene.add(ambientLight);
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
-        dirLight.position.set(10, 20, 10);
-        dirLight.castShadow = true;
-        dirLight.shadow.camera.top = 50;
-        dirLight.shadow.camera.bottom = -50;
-        dirLight.shadow.camera.left = -50;
-        dirLight.shadow.camera.right = 50;
-        dirLight.shadow.mapSize.width = 2048;
-        dirLight.shadow.mapSize.height = 2048;
-        scene.add(dirLight);
-
-        // --- ESTADO DO JOGO ---
-        const gameState = {
-            currentLevelIndex: 0,
-            started: false,
-            completed: false,
-            score: 0, 
-            bridgeBuilt: [false, false, false, false, false],
-            levelsInitialized: false,
-            lastMudSoundTime: 0
-        };
-
-        // --- CONTROLO GYRO ---
-        const gyro = { active: false, beta: 0, gamma: 0 };
-
-        // --- JOGADOR ---
-        const player = {
-            mesh: null,
-            velocity: new THREE.Vector3(),
-            speed: 0.1,
-            friction: 0.8,
-            radius: 0.5,
-            isDirty: false,
-            holdingBox: false
-        };
-
-        // Arrays globais
-        let allInteractables = []; 
-        let allLevelObjects = [];
-        let particleSystems = [];
-
-        // Input
-        const keys = { w: false, a: false, s: false, d: false };
-        window.addEventListener('keydown', (e) => {
-            if(e.key === 'ArrowUp' || e.key === 'w') keys.w = true;
-            if(e.key === 'ArrowDown' || e.key === 's') keys.s = true;
-            if(e.key === 'ArrowLeft' || e.key === 'a') keys.a = true;
-            if(e.key === 'ArrowRight' || e.key === 'd') keys.d = true;
-        });
-        window.addEventListener('keyup', (e) => {
-            if(e.key === 'ArrowUp' || e.key === 'w') keys.w = false;
-            if(e.key === 'ArrowDown' || e.key === 's') keys.s = false;
-            if(e.key === 'ArrowLeft' || e.key === 'a') keys.a = false;
-            if(e.key === 'ArrowRight' || e.key === 'd') keys.d = false;
-        });
-
-        // Gyro Setup
-        const gyroBtn = document.getElementById('gyro-btn');
-        if (window.DeviceOrientationEvent && typeof DeviceOrientationEvent.requestPermission === 'function') {
-            gyroBtn.style.display = 'inline-block';
-            gyroBtn.addEventListener('click', () => {
-                playClickSound();
-                DeviceOrientationEvent.requestPermission().then(res => {
-                    if (res === 'granted') {
-                        window.addEventListener('deviceorientation', handleOrientation);
-                        gyroBtn.style.display = 'none';
-                        gyro.active = true;
-                    }
-                });
-            });
-        } else if (window.DeviceOrientationEvent) {
-            window.addEventListener('deviceorientation', handleOrientation);
-            gyro.active = true;
-        }
-        function handleOrientation(e) { gyro.beta = e.beta; gyro.gamma = e.gamma; }
-
-
-        // --- DEFINIÇÃO DE NÍVEIS ---
-        const levels = [
-            {
-                id: 1,
-                name: "Ilha 1: O Bebé",
-                desc: "Empurra as formas para os encaixes.",
-                color: 0xffcccc,
-                zOffset: 0,
-                setup: setupLevel1,
-                update: updateLevel1
-            },
-            {
-                id: 2,
-                name: "Ilha 2: A Criança",
-                desc: "Suja-te na lama para criar a ponte.",
-                color: 0x44aa44,
-                zOffset: -ISLAND_SPACING,
-                setup: setupLevel2,
-                update: updateLevel2
-            },
-            {
-                id: 3,
-                name: "Ilha 3: O Jovem",
-                desc: "Recolhe letras para construir o teu caminho.",
-                color: 0x3366cc,
-                zOffset: -ISLAND_SPACING * 2,
-                setup: setupLevel3,
-                update: updateLevel3
-            },
-            {
-                id: 4,
-                name: "Ilha 4: O Adulto",
-                desc: "Trabalha para construir o futuro.",
-                color: 0x888888,
-                zOffset: -ISLAND_SPACING * 3,
-                setup: setupLevel4,
-                update: updateLevel4
-            },
-            {
-                id: 5,
-                name: "Ilha 5: O Idoso",
-                desc: "Caminha para a luz.",
-                color: 0xdddddd,
-                zOffset: -ISLAND_SPACING * 4,
-                setup: setupLevel5,
-                update: updateLevel5
-            }
-        ];
-
-        // UI References
-        const titleCard = document.getElementById('title-card');
-        const startBtn = document.getElementById('start-btn');
-        const levelInfoUI = document.getElementById('level-info');
-        const instructionUI = document.getElementById('instruction');
-        const flashOverlay = document.getElementById('flash-overlay');
-
-        startBtn.addEventListener('click', () => {
-            playClickSound();
-            if (!gameState.started) {
-                initGame();
-            }
-            titleCard.style.opacity = 0;
-            setTimeout(() => titleCard.style.display = 'none', 1000);
-        });
-
-        function initGame() {
-            gameState.started = true;
-            initAudio();
-            requestWakeLock();
-            
-            const waterGeo = new THREE.PlaneGeometry(200, 600);
-            const waterMat = new THREE.MeshBasicMaterial({ color: 0x004488 });
-            const water = new THREE.Mesh(waterGeo, waterMat);
-            water.rotation.x = -Math.PI / 2;
-            water.position.y = -2;
-            water.position.z = -150; 
-            scene.add(water);
-
-            levels.forEach((lvl, index) => {
-                const planeGeo = new THREE.CylinderGeometry(15, 15, 1, 32);
-                const planeMat = new THREE.MeshStandardMaterial({ color: 0x228b22 });
-                const ground = new THREE.Mesh(planeGeo, planeMat);
-                ground.position.set(0, -0.5, lvl.zOffset);
-                ground.receiveShadow = true;
-                ground.userData = { type: 'ground', levelIndex: index };
-                scene.add(ground);
-                allLevelObjects.push(ground);
-
-                lvl.setup(lvl.zOffset);
-            });
-
-            createPlayer(0.4, 0xffcccc, 0, 0);
-            updateUIForLevel(0);
-        }
-
-        function createPlayer(radius, color, x, z) {
-            if(player.mesh) scene.remove(player.mesh);
-            
-            const geo = new THREE.SphereGeometry(radius, 32, 32);
-            const mat = new THREE.MeshStandardMaterial({ color: color });
-            const mesh = new THREE.Mesh(geo, mat);
-            mesh.position.set(x, radius, z);
-            mesh.castShadow = true;
-            scene.add(mesh);
-            
-            player.mesh = mesh;
-            player.radius = radius;
-            player.velocity.set(0,0,0);
-        }
-
-        function triggerLevelArrivalEffect(levelIndex) {
-            playWinSound(); 
-
-            flashOverlay.style.opacity = 0.8;
-            setTimeout(() => flashOverlay.style.opacity = 0, 500);
-
-            const particleCount = 50;
-            const geometry = new THREE.BufferGeometry();
-            const positions = [];
-            const velocities = [];
-            const zCenter = levels[levelIndex].zOffset;
-
-            for (let i = 0; i < particleCount; i++) {
-                positions.push(0, 2, zCenter + 12); 
-                velocities.push(
-                    (Math.random() - 0.5) * 0.5,
-                    Math.random() * 0.5,
-                    (Math.random() - 0.5) * 0.5
-                );
-            }
-            geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-            const material = new THREE.PointsMaterial({ color: levels[levelIndex].color, size: 0.5 });
-            const particles = new THREE.Points(geometry, material);
-            scene.add(particles);
-            particleSystems.push({ mesh: particles, velocities: velocities, age: 0 });
-        }
-
-        function updateParticles() {
-            for (let i = particleSystems.length - 1; i >= 0; i--) {
-                const sys = particleSystems[i];
-                const positions = sys.mesh.geometry.attributes.position.array;
-                sys.age++;
-                for (let j = 0; j < sys.velocities.length / 3; j++) {
-                    positions[j*3] += sys.velocities[j*3];
-                    positions[j*3+1] += sys.velocities[j*3+1];
-                    positions[j*3+2] += sys.velocities[j*3+2];
-                }
-                sys.mesh.geometry.attributes.position.needsUpdate = true;
-                if (sys.age > 60) {
-                    scene.remove(sys.mesh);
-                    particleSystems.splice(i, 1);
-                }
-            }
-        }
-
-        // --- LOGICA ESPECÍFICA DOS NÍVEIS ---
-
-        // ILHA 1
-        function setupLevel1(zOffset) {
-            const shapesData = [
-                { type: 'box', color: 0xff0000, x: -3, z: 3 + zOffset },
-                { type: 'sphere', color: 0x00ff00, x: 0, z: 3 + zOffset },
-                { type: 'cone', color: 0x0000ff, x: 3, z: 3 + zOffset }
-            ];
-            const slotsData = [
-                { type: 'box', x: -3, z: -5 + zOffset },
-                { type: 'sphere', x: 0, z: -5 + zOffset },
-                { type: 'cone', x: 3, z: -5 + zOffset }
-            ];
-
-            shapesData.forEach(d => {
-                let geo;
-                if(d.type === 'box') geo = new THREE.BoxGeometry(1,1,1);
-                if(d.type === 'sphere') geo = new THREE.SphereGeometry(0.6);
-                if(d.type === 'cone') geo = new THREE.ConeGeometry(0.6, 1.2);
-                const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({color: d.color}));
-                mesh.position.set(d.x, 0.5, d.z);
-                mesh.castShadow = true;
-                mesh.userData = { type: 'lvl1_shape', shapeType: d.type, locked: false, originalGeo: geo };
-                scene.add(mesh);
-                allInteractables.push(mesh);
-            });
-
-            slotsData.forEach(d => {
-                let geo;
-                if(d.type === 'box') geo = new THREE.BoxGeometry(1.2,1.2,1.2);
-                if(d.type === 'sphere') geo = new THREE.SphereGeometry(0.7);
-                if(d.type === 'cone') geo = new THREE.ConeGeometry(0.7, 1.3);
-                const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color: 0xffffff, wireframe: true, opacity: 0.5, transparent: true}));
-                mesh.position.set(d.x, 0.5, d.z);
-                mesh.userData = { type: 'lvl1_slot', shapeType: d.type };
-                scene.add(mesh);
-                allLevelObjects.push(mesh);
-            });
-        }
-
-        function updateLevel1() {
-            if (gameState.bridgeBuilt[0]) return;
-
-            let solvedCount = 0;
-            const zOffset = levels[0].zOffset;
-
-            allInteractables.forEach(obj => {
-                if (obj.userData.type !== 'lvl1_shape') return;
-                
-                if (obj.userData.locked) {
-                    solvedCount++;
-                    return;
-                }
-
-                const dist = player.mesh.position.distanceTo(obj.position);
-                if (dist < player.radius + 0.8) {
-                    const pushDir = new THREE.Vector3().subVectors(obj.position, player.mesh.position);
-                    pushDir.y = 0; pushDir.normalize();
-                    obj.position.add(pushDir.multiplyScalar(0.1));
-                    obj.position.y = 0.5;
-                }
-
-                allLevelObjects.forEach(slot => {
-                    if (slot.userData.type === 'lvl1_slot' && slot.userData.shapeType === obj.userData.shapeType) {
-                        const dx = obj.position.x - slot.position.x;
-                        const dz = obj.position.z - slot.position.z;
-                        if (Math.sqrt(dx*dx + dz*dz) < 1) {
-                            obj.position.copy(slot.position);
-                            obj.userData.locked = true;
-                            slot.visible = false; 
-                            obj.material.emissive = new THREE.Color(0x333333);
-                            playClinkSound();
-                        }
-                    }
-                });
-            });
-
-            if (solvedCount === 3) {
-                gameState.bridgeBuilt[0] = true;
-                instructionUI.innerText = "As formas constroem o caminho!";
-                
-                const shapes = allInteractables.filter(o => o.userData.type === 'lvl1_shape');
-                const bridgeZStart = zOffset - 15;
-                const bridgeZEnd = levels[1].zOffset + 15;
-
-                shapes.forEach((s, i) => {
-                    const targetZ = bridgeZStart - (i+1)*10;
-                    s.position.set(0, 0, targetZ);
-                    s.scale.set(3, 0.2, 3); 
-                    s.userData.isBridge = true;
-                });
-                
-                const filler = new THREE.Mesh(new THREE.BoxGeometry(2, 0.2, 40), new THREE.MeshBasicMaterial({color: 0xffffff, transparent: true, opacity: 0.3}));
-                filler.position.set(0, -0.1, (bridgeZStart + bridgeZEnd)/2);
-                scene.add(filler);
-            }
-        }
-
-
-        // ILHA 2
-        function setupLevel2(zOffset) {
-            for(let i=0; i<5; i++) {
-                const puddle = new THREE.Mesh(new THREE.CircleGeometry(2, 32), new THREE.MeshBasicMaterial({ color: 0x3e2723 }));
-                puddle.rotation.x = -Math.PI/2;
-                puddle.position.set((Math.random()*14)-7, 0.01, zOffset + (Math.random()*14)-7);
-                puddle.userData = { type: 'lvl2_mud' };
-                scene.add(puddle);
-                allLevelObjects.push(puddle);
-            }
-        }
-
-        function updateLevel2() {
-            const zOffset = levels[1].zOffset;
-            let inMud = false;
-            allLevelObjects.forEach(obj => {
-                if(obj.userData.type === 'lvl2_mud') {
-                    const dx = player.mesh.position.x - obj.position.x;
-                    const dz = player.mesh.position.z - obj.position.z;
-                    if(Math.sqrt(dx*dx + dz*dz) < 2) inMud = true;
-                }
-            });
-
-            if(inMud && gameState.currentLevelIndex === 1) {
-                player.isDirty = true;
-                player.mesh.material.color.setHex(0x3e2723);
-                if (Date.now() - gameState.lastMudSoundTime > 400 && player.velocity.length() > 0.01) {
-                    playMudSound();
-                    gameState.lastMudSoundTime = Date.now();
-                }
-            }
-
-            const bridgeStartZ = zOffset - 14;
-            
-            if(player.isDirty && player.mesh.position.z < bridgeStartZ + 2 && player.mesh.position.z > bridgeStartZ - 30) {
-                 if(player.velocity.length() > 0.01 && Math.random() > 0.4) {
-                    const drip = new THREE.Mesh(
-                        new THREE.CircleGeometry(0.5, 8),
-                        new THREE.MeshBasicMaterial({ color: 0x3e2723 })
-                    );
-                    drip.rotation.x = -Math.PI/2;
-                    drip.position.copy(player.mesh.position);
-                    drip.position.y = 0.02;
-                    scene.add(drip);
-                    
-                    if(!gameState.bridgeBuilt[1]) {
-                        gameState.score++;
-                        if(gameState.score > 40) {
-                            gameState.bridgeBuilt[1] = true;
-                            instructionUI.innerText = "O teu rasto é o caminho. Segue em frente.";
-                        }
-                    }
-                 }
-            }
-        }
-
-
-        // ILHA 3
-        function setupLevel3(zOffset) {
-            const clockFace = new THREE.Mesh(new THREE.CircleGeometry(9, 32), new THREE.MeshBasicMaterial({ color: 0x224488, opacity: 0.3, transparent: true }));
-            clockFace.rotation.x = -Math.PI/2;
-            clockFace.position.set(0, 0.01, zOffset);
-            scene.add(clockFace);
-            allLevelObjects.push(clockFace);
-
-            const letters = ['V', 'I', 'D', 'A'];
-            const positions = [{x: -2, z: 0}, {x: -0.7, z: 0}, {x: 0.7, z: 0}, {x: 2, z: 0}];
-            letters.forEach((char, i) => {
-                const canvas = document.createElement('canvas'); canvas.width=64; canvas.height=64;
-                const ctx = canvas.getContext('2d'); ctx.fillStyle='#ffff00'; ctx.font='bold 50px Arial'; ctx.fillText(char, 15, 50);
-                const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map: new THREE.CanvasTexture(canvas)}));
-                sprite.position.set(positions[i].x, 1.5, positions[i].z + zOffset);
-                sprite.scale.set(2,2,1);
-                sprite.userData = { type: 'lvl3_letter', char: char };
-                scene.add(sprite);
-                allInteractables.push(sprite);
-            });
-            
-            for (let i = 1; i <= 12; i++) {
-                const angle = (i / 12) * Math.PI * 2;
-                const x = Math.sin(angle) * 7.5;
-                const z = -Math.cos(angle) * 7.5;
-                const canvas = document.createElement('canvas'); canvas.width=64; canvas.height=64;
-                const ctx = canvas.getContext('2d'); ctx.fillStyle='#fff'; ctx.font='bold 40px Arial'; ctx.fillText(i, 20, 40);
-                const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map: new THREE.CanvasTexture(canvas)}));
-                sprite.position.set(x, 1.5, z + zOffset);
-                scene.add(sprite);
-                allInteractables.push(sprite); 
-            }
-        }
-
-        // Função auxiliar para criar bloco com letra
-        function createBridgeBlock(char, index, zOffset) {
-             const boxGeo = new THREE.BoxGeometry(4, 0.5, 6);
-             
-             // Criar textura com a letra
-             const canvas = document.createElement('canvas');
-             canvas.width = 256; canvas.height = 256;
-             const ctx = canvas.getContext('2d');
-             
-             // Fundo azul
-             ctx.fillStyle = '#3366cc';
-             ctx.fillRect(0, 0, 256, 256);
-             
-             // Letra
-             ctx.fillStyle = '#ffffff';
-             ctx.font = 'bold 150px Arial';
-             ctx.textAlign = 'center';
-             ctx.textBaseline = 'middle';
-             ctx.fillText(char, 128, 128);
-             
-             // Borda
-             ctx.strokeStyle = '#ffffff';
-             ctx.lineWidth = 10;
-             ctx.strokeRect(10, 10, 236, 236);
-             
-             const texture = new THREE.CanvasTexture(canvas);
-             const mat = new THREE.MeshStandardMaterial({ map: texture });
-             
-             const box = new THREE.Mesh(boxGeo, mat);
-             // Posicionar bloco sequencialmente (0, 1, 2, 3)
-             box.position.set(0, 0, zOffset - 18 - (index * 6.5));
-             scene.add(box);
-             
-             // Pequena animação de "pop"
-             box.scale.set(0.1, 0.1, 0.1);
-             let s = 0.1;
-             const grow = setInterval(() => {
-                 s += 0.1;
-                 box.scale.set(s, s, s);
-                 if (s >= 1) clearInterval(grow);
-             }, 20);
-        }
-
-        function updateLevel3() {
-            if (gameState.bridgeBuilt[2]) return;
-            let lettersFound = 0;
-            const zOffset = levels[2].zOffset;
-
-            allInteractables.forEach(obj => {
-                if (obj.userData.type === 'lvl3_letter') {
-                    if(obj.visible && player.mesh.position.distanceTo(obj.position) < 1.5) {
-                        obj.visible = false;
-                        gameState.score++; // Incrementa score (1, 2, 3, 4...)
-                        playClinkSound();
-                        
-                        // Adiciona bloco IMEDIATAMENTE
-                        // Usa gameState.score-1 para ter índice 0,1,2,3
-                        createBridgeBlock(obj.userData.char, gameState.score - 1, zOffset);
-                        
-                        instructionUI.innerText = `Adicionado bloco "${obj.userData.char}" à ponte!`;
-                    }
-                    if(!obj.visible) lettersFound++;
-                }
-            });
-
-            if(lettersFound === 4) {
-                gameState.bridgeBuilt[2] = true;
-                instructionUI.innerText = "Caminho completo. O conhecimento é o teu suporte.";
-            }
-        }
-
-
-        // ILHA 4
-        function setupLevel4(zOffset) {
-            const pickupZone = new THREE.Mesh(new THREE.BoxGeometry(3, 0.1, 3), new THREE.MeshBasicMaterial({color: 0x00ff00}));
-            pickupZone.position.set(-6, 0.01, zOffset);
-            pickupZone.userData = { type: 'lvl4_zone' };
-            scene.add(pickupZone);
-            
-            const dropZone = new THREE.Mesh(new THREE.BoxGeometry(3, 0.1, 3), new THREE.MeshBasicMaterial({color: 0xff0000}));
-            dropZone.position.set(6, 0.01, zOffset);
-            dropZone.userData = { type: 'lvl4_zone' };
-            scene.add(dropZone);
-
-            spawnBoxLevel4(zOffset);
-            gameState.workDays = 0; 
-        }
-
-        function spawnBoxLevel4(zOffset) {
-            const box = new THREE.Mesh(new THREE.BoxGeometry(1,1,1), new THREE.MeshStandardMaterial({ color: 0x8B4513 }));
-            box.position.set(-6, 1, zOffset);
-            box.userData = { type: 'lvl4_cargo' };
-            scene.add(box);
-            allInteractables.push(box);
-        }
-
-        function updateLevel4() {
-            if (gameState.bridgeBuilt[3]) return;
-            const zOffset = levels[3].zOffset;
-            
-            if (player.holdingBox) {
-                if (player.mesh.position.distanceTo(new THREE.Vector3(6, 0, zOffset)) < 2) {
-                    player.holdingBox = false;
-                    player.mesh.children = player.mesh.children.filter(c => c.userData.id !== 'heldBox');
-                    
-                    gameState.workDays = (gameState.workDays || 0) + 1;
-                    document.getElementById('task-counter').innerText = `Dias: ${gameState.workDays}`;
-                    playClinkSound(); 
-                    
-                    const piece = new THREE.Mesh(new THREE.BoxGeometry(3, 0.5, 6), new THREE.MeshStandardMaterial({color: 0x888888}));
-                    piece.position.set(0, 0, zOffset - 15 - (gameState.workDays * 6));
-                    scene.add(piece);
-
-                    if (gameState.workDays < 5) {
-                        spawnBoxLevel4(zOffset);
-                    } else {
-                        gameState.bridgeBuilt[3] = true;
-                        instructionUI.innerText = "Reforma alcançada. Segue em frente.";
-                    }
-                }
+        function toggleResults() {
+            if (resultPanel.classList.contains('hidden')) {
+                resultPanel.classList.remove('hidden');
             } else {
-                allInteractables.forEach(obj => {
-                    if (obj.userData.type === 'lvl4_cargo' && obj.visible && player.mesh.position.distanceTo(obj.position) < 1.5) {
-                        obj.visible = false;
-                        player.holdingBox = true;
-                        playClinkSound(); 
-                        const carryBox = new THREE.Mesh(new THREE.BoxGeometry(0.6,0.6,0.6), new THREE.MeshStandardMaterial({color:0x8B4513}));
-                        carryBox.position.y = 1.2;
-                        carryBox.userData = { id: 'heldBox' };
-                        player.mesh.add(carryBox);
-                    }
-                });
+                resultPanel.classList.add('hidden');
             }
         }
 
-
-        // ILHA 5
-        function setupLevel5(zOffset) {
-            createGhost(new THREE.ConeGeometry(0.6,1.2), -3, zOffset + 5, 0xffcccc);
-            createGhost(new THREE.CircleGeometry(2, 32), 3, zOffset, 0x5c4033);
+        function startDrawing(e) {
+            isDrawing = true;
+            instructions.style.opacity = '0';
+            // resultPanel.classList.add('hidden'); // Removed auto-hide on draw to keep context if desired
+            analyzedModels = []; 
             
-            const lightEnd = new THREE.PointLight(0xffffff, 2, 30);
-            lightEnd.position.set(0, 5, zOffset - 20);
-            scene.add(lightEnd);
+            let {x, y} = getPos(e);
             
-            const orb = new THREE.Mesh(new THREE.SphereGeometry(1), new THREE.MeshBasicMaterial({color:0xffffff}));
-            orb.position.set(0, 2, zOffset - 20);
-            orb.userData = { type: 'end_light' };
-            allInteractables.push(orb);
-            scene.add(orb);
-        }
-        
-        function createGhost(geo, x, z, color) {
-            const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color:color, transparent:true, opacity:0.5, wireframe:true}));
-            mesh.position.set(x, 0.5, z);
-            if(geo.type==='CircleGeometry') mesh.rotation.x = -Math.PI/2;
-            scene.add(mesh);
-        }
-
-        function updateLevel5() {
-            const zOffset = levels[4].zOffset;
-            allInteractables.forEach(obj => {
-                if(obj.userData.type === 'end_light' && player.mesh.position.distanceTo(obj.position) < 3) {
-                    document.getElementById('fade-overlay').style.opacity = 1;
-                    if (audioCtx) {
-                         playTone(523, 'sine', 2, 0.1); 
-                         playTone(659, 'sine', 2, 0.1);
-                         playTone(784, 'sine', 2, 0.1);
+            // --- LOGIC: SNAP TO PREVIOUS STROKE BUT CREATE NEW ONE ---
+            if (strokes.length > 0) {
+                const lastStroke = strokes[strokes.length - 1];
+                if (lastStroke.length > 0) {
+                    const lastPt = lastStroke[lastStroke.length - 1];
+                    const dist = Math.sqrt(Math.pow(x - lastPt.x, 2) + Math.pow(y - lastPt.y, 2));
+                    
+                    if (dist < 20) {
+                        x = lastPt.x;
+                        y = lastPt.y;
                     }
-                    setTimeout(()=> { alert("Fim da Jornada."); location.reload(); }, 4000);
                 }
+            }
+
+            currentStroke = [];
+            strokes.push(currentStroke);
+            currentStroke.push({x, y});
+            
+            renderAll(); 
+            
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.strokeStyle = '#60a5fa'; 
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const {x, y} = getPos(e);
+            
+            const last = currentStroke[currentStroke.length-1];
+            if (!last) {
+                currentStroke.push({x, y});
+                return;
+            }
+
+            const dist = Math.sqrt(Math.pow(x - last.x, 2) + Math.pow(y - last.y, 2));
+            if (dist > 5) {
+                currentStroke.push({x, y});
+                ctx.lineTo(x, y);
+                ctx.stroke();
+            }
+        }
+
+        function stopDrawing() { 
+            isDrawing = false; 
+        }
+
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            let clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            let clientY = e.clientY || (e.touches && e.touches[0].clientY);
+            return { x: clientX - rect.left, y: clientY - rect.top };
+        }
+
+        // Listeners
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseleave', stopDrawing);
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDrawing(e); }, {passive: false});
+        canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); }, {passive: false});
+        canvas.addEventListener('touchend', stopDrawing);
+
+        // --- RENDER SYSTEM ---
+
+        function renderAll() {
+            drawGrid();
+            drawRawStrokes();
+            if (analyzedModels.length > 0) {
+                drawAnalyzedCurves();
+            }
+        }
+
+        function drawGrid() {
+            ctx.clearRect(0, 0, width, height);
+            
+            ctx.strokeStyle = '#1e293b'; 
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            for(let x = originX; x < width; x+=scale) { ctx.moveTo(x, 0); ctx.lineTo(x, height); }
+            for(let x = originX; x > 0; x-=scale) { ctx.moveTo(x, 0); ctx.lineTo(x, height); }
+            for(let y = originY; y < height; y+=scale) { ctx.moveTo(0, y); ctx.lineTo(width, y); }
+            for(let y = originY; y > 0; y-=scale) { ctx.moveTo(0, y); ctx.lineTo(width, y); }
+            ctx.stroke();
+
+            ctx.strokeStyle = '#f8fafc'; 
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(0, originY); ctx.lineTo(width, originY); 
+            ctx.moveTo(originX, 0); ctx.lineTo(originX, height); 
+            ctx.stroke();
+
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = 'bold 12px monospace';
+            ctx.fillText("y", originX + 10, 20);
+            ctx.fillText("x", width - 20, originY - 10);
+            ctx.fillText("(0,0)", originX + 5, originY + 15);
+        }
+
+        function drawRawStrokes() {
+            ctx.strokeStyle = '#60a5fa'; 
+            ctx.lineWidth = 3;
+            ctx.setLineDash([]); // Ensure solid line for user drawing
+            
+            strokes.forEach(stroke => {
+                if(stroke.length < 1) return;
+                ctx.beginPath();
+                ctx.moveTo(stroke[0].x, stroke[0].y);
+                for(let i=1; i<stroke.length; i++) ctx.lineTo(stroke[i].x, stroke[i].y);
+                ctx.stroke();
             });
         }
 
+        function clearAll() {
+            strokes = [];
+            currentStroke = [];
+            analyzedModels = [];
+            instructions.style.opacity = '1';
+            resultPanel.classList.add('hidden');
+            renderAll();
+        }
 
-        // --- SISTEMA DE ZONAS ---
-        function updateZoneLogic() {
-            const pZ = player.mesh.position.z;
-            let newLevelIndex = gameState.currentLevelIndex;
+        // --- MATH & ANALYSIS ---
 
-            levels.forEach((lvl, i) => {
-                if (Math.abs(pZ - lvl.zOffset) < 20) {
-                    newLevelIndex = i;
+        function canvasToMath(pt) {
+            return { x: (pt.x - originX) / scale, y: -(pt.y - originY) / scale };
+        }
+
+        function mathToCanvas(x, y) {
+            return { x: (x * scale) + originX, y: (-y * scale) + originY };
+        }
+
+        function analyzeAllCurves() {
+            analyzedModels = [];
+            equationsList.innerHTML = "";
+            let count = 0;
+
+            strokes.forEach((stroke, index) => {
+                if (stroke.length < 5) return; 
+
+                const mathPoints = stroke.map(canvasToMath);
+                
+                const xs = mathPoints.map(p => p.x);
+                const minX = Math.min(...xs);
+                const maxX = Math.max(...xs);
+
+                const model = findBestModel(mathPoints, minX, maxX);
+                
+                if (model) {
+                    model.id = index + 1;
+                    model.domain = { min: minX, max: maxX };
+                    analyzedModels.push(model);
+                    addResultToUI(model);
+                    count++;
                 }
             });
 
-            if (newLevelIndex !== gameState.currentLevelIndex) {
-                gameState.currentLevelIndex = newLevelIndex;
-                updateUIForLevel(newLevelIndex);
-                triggerLevelArrivalEffect(newLevelIndex);
-                
-                player.mesh.material.color.setHex(levels[newLevelIndex].color);
-                gameState.score = 0; 
-                
-                // Reset physics defaults
-                player.speed = 0.1;
-                player.friction = 0.8;
-                scene.fog.density = 0.01; // Reset fog
-                
-                // Lógica específica por nível
-                if(newLevelIndex === 3) { // Adulto
-                    const scar = new THREE.Mesh(new THREE.TorusGeometry(0.8, 0.05, 16, 100), new THREE.MeshBasicMaterial({ color: 0x220000 }));
-                    scar.rotation.x = Math.PI/4;
-                    player.mesh.add(scar);
+            if (count > 0) {
+                functionCount.innerText = count;
+                resultPanel.classList.remove('hidden');
+                renderAll(); 
+                if (window.MathJax) MathJax.typesetPromise([equationsList]);
+            } else {
+                alert("Não detetei curvas claras. Tente desenhar um pouco mais.");
+            }
+        }
+
+        function findBestModel(points, minX, maxX) {
+            // --- PASSO 1: CALCULAR GEOMETRIA ---
+            let directionChanges = 0;
+            let lastSign = 0;
+            const stride = Math.max(1, Math.floor(points.length / 10));
+            for(let i=stride; i<points.length; i+=stride) {
+                let diff = points[i].y - points[i-stride].y;
+                if (Math.abs(diff) < 0.05) continue;
+                let sign = Math.sign(diff);
+                if (lastSign !== 0 && sign !== lastSign) {
+                    directionChanges++;
                 }
+                lastSign = sign;
+            }
+
+            const rawQuad = fitPolynomial(points, 2);
+            const isConvex = (!isNaN(rawQuad.r2) && rawQuad.coeffs[2] > 0);
+            const isConcave = (!isNaN(rawQuad.r2) && rawQuad.coeffs[2] < 0);
+
+            const ys = points.map(p => p.y);
+            const height = Math.max(...ys) - Math.min(...ys);
+            const startY = points[0].y;
+            const endY = points[points.length - 1].y;
+            const yDiff = Math.abs(startY - endY);
+
+            let isLoopShape = (height > 0.1 && (yDiff / height) < 0.35);
+
+            // --- PASSO 2: CALCULAR MODELOS ---
+            const linear = fitPolynomial(points, 1);
+            const quadratic = fitPolynomial(points, 2); 
+            const cubic = fitPolynomial(points, 3);
+            const sine = fitSineRobust(points);
+            const log = fitLogarithmic(points);
+            const exp = fitExponential(points);
+
+            const models = [
+                { name: "Reta", ...linear, type: 'poly' },
+                { name: "Quadrática", ...quadratic, type: 'poly' },
+                { name: "Cúbica", ...cubic, type: 'poly' },
+                { name: sine.isCosine ? "Coseno" : "Seno", ...sine, type: 'sine' },
+                { name: "Logarítmica", ...log, type: 'log' },
+                { name: "Exponencial", ...exp, type: 'exp' }
+            ];
+
+            const validModels = models.filter(m => !isNaN(m.r2));
+            if (validModels.length === 0) return null;
+
+            // --- PASSO 3: SCORE ---
+            validModels.forEach(m => {
+                m.score = m.r2;
                 
-                if(newLevelIndex === 4) { // Idoso
-                    // FÍSICA DO IDOSO CORRIGIDA
-                    // Aumentamos drasticamente a inércia (friction 0.99)
-                    // MAS reduzimos muito a aceleração (speed) para compensar e não acumular velocidade infinita
-                    player.friction = 0.99; 
-                    player.speed = 0.005; // Muito baixo para equilibrar com a fricção alta
-                    
-                    scene.fog.density = 0.05;
-                    
-                    // Mudar música para creepy
-                    if (currentMusicMood !== 'creepy') {
-                        currentMusicMood = 'creepy';
-                        startAmbientMusic(); // Reinicia o loop com nova escala
+                if (m.name === "Reta") m.score -= 0.0;
+                else if (m.type === 'exp' || m.type === 'log') m.score -= 0.01;
+                else if (m.name === "Quadrática") m.score -= 0.03;
+                else if (m.name === "Cúbica") m.score -= 0.08; 
+
+                if (isLoopShape) {
+                    if (m.name === "Reta") m.score -= 1.0;
+                    if (m.type === 'exp') m.score -= 1.0;
+                    if (m.type === 'log') m.score -= 1.0;
+
+                    if (m.type === 'sine') {
+                        if (directionChanges <= 1) {
+                            m.score -= 0.40; 
+                        }
                     }
+
+                    if (m.name === "Cúbica" && directionChanges <= 1) {
+                        m.score -= 0.10;
+                    }
+
                 } else {
-                    // Voltar a música normal se sair do nível do idoso (caso o jogador ande para trás)
-                    if (currentMusicMood !== 'normal') {
-                        currentMusicMood = 'normal';
-                        startAmbientMusic();
+                    if (m.name === "Quadrática") m.score -= 0.30;
+                    if (m.name === "Cúbica") m.score -= 0.40;
+                    if (m.type === 'sine') m.score -= 0.50;
+
+                    if (m.name === "Exponencial" && isConcave) m.score -= 0.05; 
+                    if (m.name === "Logarítmica" && isConvex) m.score -= 0.05;
+                }
+            });
+
+            validModels.sort((a, b) => b.score - a.score);
+            let best = validModels[0];
+            const bestR2 = best.r2;
+            const threshold = 0.05; 
+
+            const linModel = validModels.find(m => m.name === "Reta");
+            if (linModel && (bestR2 - linModel.r2) < threshold && linModel.r2 > 0.6) {
+                best = linModel;
+            }
+            
+            return best;
+        }
+
+        // --- VISUALIZATION OF RESULTS ---
+
+        function drawAnalyzedCurves() {
+            ctx.lineWidth = 4;
+            
+            analyzedModels.forEach((model, idx) => {
+                const hue = (idx * 137) % 360; 
+                
+                // Limites do Canvas em coordenadas matemáticas
+                const minCanvasX = -originX / scale;
+                const maxCanvasX = (width - originX) / scale;
+
+                const drawSegment = (xStart, xEnd, dashed, lightness) => {
+                    if (xStart >= xEnd) return;
+
+                    ctx.beginPath();
+                    ctx.strokeStyle = `hsl(${hue}, 70%, ${lightness}%)`;
+                    
+                    if (dashed) {
+                        ctx.setLineDash([10, 10]); // Traço interrompido
+                    } else {
+                        ctx.setLineDash([]); // Sólido
                     }
+
+                    const step = Math.max((xEnd - xStart) / 100, 0.05); 
+                    
+                    let first = true;
+                    for (let x = xStart; x <= xEnd + step/2; x += step) {
+                        const curX = Math.min(x, xEnd); // Clamp
+                        
+                        let y = 0;
+                        if (model.type === 'poly') {
+                            y = model.coeffs.reduce((acc, c, i) => acc + c * Math.pow(curX, i), 0);
+                        } else if (model.type === 'sine') {
+                            y = model.a * Math.sin(model.b * curX + model.c) + model.d;
+                        } else if (model.type === 'log') {
+                            let val = model.useNegX ? -curX : curX;
+                            if (val <= 0) { first = true; continue; } 
+                            y = model.a + model.b * Math.log(val);
+                        } else if (model.type === 'exp') {
+                            y = model.a * Math.exp(model.b * curX);
+                        }
+
+                        let pt = mathToCanvas(curX, y);
+                        
+                        if (first) { ctx.moveTo(pt.x, pt.y); first = false; } else ctx.lineTo(pt.x, pt.y);
+                    }
+                    ctx.stroke();
+                };
+
+                // 1. Extensão Esquerda
+                drawSegment(minCanvasX, model.domain.min, true, 30);
+                // 2. Parte Principal
+                drawSegment(model.domain.min, model.domain.max, false, 60);
+                // 3. Extensão Direita
+                drawSegment(model.domain.max, maxCanvasX, true, 30);
+
+                ctx.setLineDash([]);
+
+                let startX = model.domain.min;
+                let startY = 0; 
+                if (model.type === 'poly') startY = model.coeffs.reduce((acc, c, i) => acc + c * Math.pow(startX, i), 0);
+                else if (model.type === 'sine') startY = model.a * Math.sin(model.b * startX + model.c) + model.d;
+                else if (model.type === 'log') { let v = model.useNegX ? -startX : startX; startY = (v > 0) ? model.a + model.b * Math.log(v) : 0; }
+                else if (model.type === 'exp') startY = model.a * Math.exp(model.b * startX);
+
+                let labelPt = mathToCanvas(startX, startY);
+                ctx.fillStyle = `hsl(${hue}, 70%, 60%)`;
+                ctx.beginPath();
+                ctx.arc(labelPt.x, labelPt.y, 4, 0, Math.PI*2);
+                ctx.fill();
+            });
+        }
+
+        function addResultToUI(model) {
+            let latex = "";
+            if (model.type === 'poly') {
+                let isFirst = true;
+                for (let i = model.coeffs.length - 1; i >= 0; i--) {
+                    let c = model.coeffs[i];
+                    if (Math.abs(c) < 0.01 && i !== 0) continue;
+                    latex += (c >= 0 ? (isFirst ? "" : "+ ") : "- ") + Math.abs(c).toFixed(2) + (i === 1 ? "x " : (i > 1 ? `x^${i} ` : ""));
+                    isFirst = false;
+                }
+                if (latex === "") latex = "0";
+            } else if (model.type === 'sine') {
+                let func = model.isCosine ? "\\cos" : "\\sin";
+                let phase = model.isCosine ? model.displayC : model.c;
+                latex = `${model.a.toFixed(2)} ${func}(${model.b.toFixed(2)}x ${phase >= 0 ? "+" : ""}${phase.toFixed(2)}) ${model.d >= 0 ? "+" : ""}${model.d.toFixed(2)}`;
+            } else if (model.type === 'log') {
+                let signB = model.b >= 0 ? "+" : "";
+                let arg = model.useNegX ? "(-x)" : "x";
+                latex = `${model.a.toFixed(2)} ${signB} ${model.b.toFixed(2)} \\ln(${arg})`;
+            } else if (model.type === 'exp') {
+                latex = `${model.a.toFixed(2)} e^{${model.b.toFixed(2)}x}`;
+            }
+
+            const item = document.createElement('div');
+            item.className = "bg-slate-900/50 p-3 rounded border border-slate-700 relative group";
+            
+            const hue = ((model.id - 1) * 137) % 360;
+            const colorDot = `<div class="w-3 h-3 rounded-full absolute top-3 right-3" style="background-color: hsl(${hue}, 70%, 60%);"></div>`;
+            
+            item.innerHTML = `
+                ${colorDot}
+                <div class="text-xs text-slate-400 font-mono mb-1">
+                    f<sub>${model.id}</sub>(x) • ${model.name} <span class="opacity-50">(R² ${model.r2.toFixed(2)})</span>
+                </div>
+                <div class="overflow-x-auto whitespace-nowrap text-emerald-400 text-lg">
+                    $$ f_{${model.id}}(x) = ${latex} $$
+                </div>
+                <div class="text-[10px] text-slate-500 mt-1 font-mono">
+                    Domínio: [${model.domain.min.toFixed(1)} , ${model.domain.max.toFixed(1)}]
+                </div>
+            `;
+            
+            equationsList.appendChild(item);
+        }
+
+        // --- MATH HELPERS ---
+
+        function fitLogarithmic(data) {
+            let allPos = data.every(p => p.x > 0.01);
+            let allNeg = data.every(p => p.x < -0.01);
+            if (!allPos && !allNeg) return { r2: -Infinity }; 
+            let useNegX = allNeg;
+            let transformedData = data.map(p => ({ x: Math.log(useNegX ? -p.x : p.x), y: p.y }));
+            let res = fitPolynomial(transformedData, 1); 
+            let a = res.coeffs[0]; let b = res.coeffs[1];
+            let r2 = calculateR2(data, (x) => {
+                let val = useNegX ? -x : x;
+                if (val <= 0) return 0;
+                return a + b * Math.log(val);
+            });
+            return { a, b, useNegX, r2 };
+        }
+
+        function fitExponential(data) {
+            let allPos = data.every(p => p.y > 0.01);
+            let allNeg = data.every(p => p.y < -0.01);
+            if (!allPos && !allNeg) return { r2: -Infinity }; 
+            let isNegativeY = allNeg;
+            let transformedData = data.map(p => ({ x: p.x, y: Math.log(isNegativeY ? -p.y : p.y) }));
+            let res = fitPolynomial(transformedData, 1); 
+            let A_lin = res.coeffs[0]; let B_lin = res.coeffs[1];
+            let a = Math.exp(A_lin); if (isNegativeY) a = -a;
+            let b = B_lin;
+            let r2 = calculateR2(data, (x) => a * Math.exp(b * x));
+            return { a, b, r2 };
+        }
+
+        function fitPolynomial(data, degree) {
+            let N = data.length;
+            let X = new Array(2 * degree + 1).fill(0);
+            let Y = new Array(degree + 1).fill(0);
+            for (let i = 0; i < N; i++) {
+                let x = data[i].x; let y = data[i].y;
+                for (let j = 0; j <= 2 * degree; j++) X[j] += Math.pow(x, j);
+                for (let j = 0; j <= degree; j++) Y[j] += Math.pow(x, j) * y;
+            }
+            let A = [];
+            for (let i = 0; i <= degree; i++) {
+                A[i] = [];
+                for (let j = 0; j <= degree; j++) A[i][j] = X[i + j];
+            }
+            let coeffs = gaussianElimination(A, Y);
+            let r2 = calculateR2(data, (x) => {
+                let yPred = 0;
+                coeffs.forEach((c, i) => yPred += c * Math.pow(x, i));
+                return yPred;
+            });
+            return { coeffs, degree, r2 };
+        }
+
+        function gaussianElimination(A, B) {
+            let n = B.length;
+            for (let i = 0; i < n; i++) {
+                let maxEl = Math.abs(A[i][i]); let maxRow = i;
+                for (let k = i + 1; k < n; k++) { if (Math.abs(A[k][i]) > maxEl) { maxEl = Math.abs(A[k][i]); maxRow = k; } }
+                for (let k = i; k < n; k++) { let tmp = A[maxRow][k]; A[maxRow][k] = A[i][k]; A[i][k] = tmp; }
+                let tmp = B[maxRow]; B[maxRow] = B[i]; B[i] = tmp;
+                for (let k = i + 1; k < n; k++) {
+                    let c = -A[k][i] / A[i][i];
+                    for (let j = i; j < n; j++) { if (i === j) A[k][j] = 0; else A[k][j] += c * A[i][j]; }
+                    B[k] += c * B[i];
                 }
             }
-        }
-
-        function updateUIForLevel(index) {
-            const lvl = levels[index];
-            levelInfoUI.innerText = lvl.name;
-            levelInfoUI.style.color = '#' + lvl.color.toString(16);
-            instructionUI.innerText = lvl.desc;
-            document.getElementById('task-counter').style.display = (index === 3) ? 'block' : 'none';
-        }
-
-
-        // --- LOOP PRINCIPAL ---
-        function animate() {
-            requestAnimationFrame(animate);
-            if (!gameState.started || !player.mesh) return;
-
-            // INPUT
-            if (keys.w) player.velocity.z -= player.speed * 0.1;
-            if (keys.s) player.velocity.z += player.speed * 0.1;
-            if (keys.a) player.velocity.x -= player.speed * 0.1;
-            if (keys.d) player.velocity.x += player.speed * 0.1;
-            
-            if (gyro.active) {
-                 const deadzone = 2;
-                 if (Math.abs(gyro.beta) > deadzone) player.velocity.z += THREE.MathUtils.clamp(gyro.beta, -45, 45) * 0.003 * player.speed;
-                 if (Math.abs(gyro.gamma) > deadzone) player.velocity.x += THREE.MathUtils.clamp(gyro.gamma, -45, 45) * 0.003 * player.speed;
+            let x = new Array(n).fill(0);
+            for (let i = n - 1; i > -1; i--) {
+                let sum = 0;
+                for (let j = i + 1; j < n; j++) sum += A[i][j] * x[j];
+                x[i] = (B[i] - sum) / A[i][i];
             }
-
-            player.mesh.position.add(player.velocity);
-            player.velocity.multiplyScalar(player.friction);
-
-            // COLISÃO BÁSICA COM CHÃO
-            if (Math.abs(player.mesh.position.x) > 15) {
-                player.mesh.position.x = 0; 
-                player.velocity.set(0,0,0);
-            }
-
-            camera.position.x = player.mesh.position.x;
-            camera.position.z = player.mesh.position.z + 12;
-            camera.position.y = player.mesh.position.y + 10;
-            camera.lookAt(player.mesh.position);
-
-            updateLevel1();
-            updateLevel2();
-            updateLevel3();
-            updateLevel4();
-            updateLevel5();
-            
-            updateZoneLogic();
-            updateParticles();
-
-            renderer.render(scene, camera);
+            return x;
         }
 
-        animate();
-        
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
+        function fitSineRobust(data) {
+            let n = data.length;
+            let bestR2 = -Infinity;
+            let bestParams = null;
+            let frequencies = [];
+            for(let b = 0.1; b <= 4.0; b += 0.1) frequencies.push(b);
+            frequencies.push(Math.PI/2, Math.PI, 2*Math.PI); 
+
+            for (let b of frequencies) {
+                let sumSin2 = 0, sumCos2 = 0, sumSinCos = 0, sumSin = 0, sumCos = 0, sumY = 0, sumYSin = 0, sumYCos = 0;
+                for(let i=0; i<n; i++) {
+                    let x = data[i].x; let y = data[i].y;
+                    let s = Math.sin(b * x); let c = Math.cos(b * x);
+                    sumSin2 += s*s; sumCos2 += c*c; sumSinCos += s*c;
+                    sumSin += s; sumCos += c; sumY += y; sumYSin += y*s; sumYCos += y*c;
+                }
+                let A_mat = [[sumSin2, sumSinCos, sumSin], [sumSinCos, sumCos2, sumCos], [sumSin, sumCos, n]];
+                let B_vec = [sumYSin, sumYCos, sumY];
+                let coeffs = gaussianElimination(A_mat, B_vec);
+                if(coeffs.some(val => isNaN(val))) continue;
+                let r2 = calculateR2(data, (x) => coeffs[0] * Math.sin(b*x) + coeffs[1] * Math.cos(b*x) + coeffs[2]);
+                if (r2 > bestR2) { bestR2 = r2; bestParams = { b, C1: coeffs[0], C2: coeffs[1], D: coeffs[2] }; }
+            }
+            if (!bestParams) return { r2: 0, a:0, b:0, c:0, d:0 };
+            let b = bestParams.b;
+            let a = Math.sqrt(bestParams.C1**2 + bestParams.C2**2);
+            let c = Math.atan2(bestParams.C2, bestParams.C1);
+            let isCosine = false;
+            let displayC = c;
+            let c_as_cos = c - Math.PI/2;
+            while(c_as_cos > Math.PI) c_as_cos -= 2*Math.PI;
+            while(c_as_cos < -Math.PI) c_as_cos += 2*Math.PI;
+            if (Math.abs(c_as_cos) < Math.abs(c)) { isCosine = true; displayC = c_as_cos; }
+            return { a, b, c, d: bestParams.D, r2: bestR2, isCosine, displayC };
+        }
+
+        function calculateR2(data, predictFn) {
+            let n = data.length;
+            let sumY = 0; data.forEach(p => sumY += p.y);
+            let meanY = sumY / n;
+            let ssTot = 0, ssRes = 0;
+            data.forEach(p => {
+                let yActual = p.y; let yPred = predictFn(p.x);
+                ssTot += Math.pow(yActual - meanY, 2); ssRes += Math.pow(yActual - yPred, 2);
+            });
+            return ssTot === 0 ? 0 : 1 - (ssRes / ssTot);
+        }
+
+        resize();
     </script>
 </body>
 </html>
